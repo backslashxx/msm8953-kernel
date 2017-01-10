@@ -47,11 +47,8 @@ CONTENTS
   5-3. IO
     5-3-1. IO Interface Files
     5-3-2. Writeback
-6. Namespace
-  6-1. Basics
-  6-2. The Root and Views
-  6-3. Migration and setns(2)
-  6-4. Interaction with Other Namespaces
+  5-4. PID
+    5-4-1. PID Interface Files
 P. Information on Kernel Programming
   P-1. Filesystem Support for Writeback
 D. Deprecated v1 Core Features
@@ -1137,146 +1134,43 @@ writeback as follows.
 	vm.dirty[_background]_ratio.
 
 
-6. Namespace
+5-4. PID
 
-6-1. Basics
+The process number controller is used to allow a cgroup to stop any
+new tasks from being fork()'d or clone()'d after a specified limit is
+reached.
 
-cgroup namespace provides a mechanism to virtualize the view of the
-"/proc/$PID/cgroup" file and cgroup mounts.  The CLONE_NEWCGROUP clone
-flag can be used with clone(2) and unshare(2) to create a new cgroup
-namespace.  The process running inside the cgroup namespace will have
-its "/proc/$PID/cgroup" output restricted to cgroupns root.  The
-cgroupns root is the cgroup of the process at the time of creation of
-the cgroup namespace.
+The number of tasks in a cgroup can be exhausted in ways which other
+controllers cannot prevent, thus warranting its own controller.  For
+example, a fork bomb is likely to exhaust the number of tasks before
+hitting memory restrictions.
 
-Without cgroup namespace, the "/proc/$PID/cgroup" file shows the
-complete path of the cgroup of a process.  In a container setup where
-a set of cgroups and namespaces are intended to isolate processes the
-"/proc/$PID/cgroup" file may leak potential system level information
-to the isolated processes.  For Example:
-
-  # cat /proc/self/cgroup
-  0::/batchjobs/container_id1
-
-The path '/batchjobs/container_id1' can be considered as system-data
-and undesirable to expose to the isolated processes.  cgroup namespace
-can be used to restrict visibility of this path.  For example, before
-creating a cgroup namespace, one would see:
-
-  # ls -l /proc/self/ns/cgroup
-  lrwxrwxrwx 1 root root 0 2014-07-15 10:37 /proc/self/ns/cgroup -> cgroup:[4026531835]
-  # cat /proc/self/cgroup
-  0::/batchjobs/container_id1
-
-After unsharing a new namespace, the view changes.
-
-  # ls -l /proc/self/ns/cgroup
-  lrwxrwxrwx 1 root root 0 2014-07-15 10:35 /proc/self/ns/cgroup -> cgroup:[4026532183]
-  # cat /proc/self/cgroup
-  0::/
-
-When some thread from a multi-threaded process unshares its cgroup
-namespace, the new cgroupns gets applied to the entire process (all
-the threads).  This is natural for the v2 hierarchy; however, for the
-legacy hierarchies, this may be unexpected.
-
-A cgroup namespace is alive as long as there are processes inside or
-mounts pinning it.  When the last usage goes away, the cgroup
-namespace is destroyed.  The cgroupns root and the actual cgroups
-remain.
+Note that PIDs used in this controller refer to TIDs, process IDs as
+used by the kernel.
 
 
-6-2. The Root and Views
+5-4-1. PID Interface Files
 
-The 'cgroupns root' for a cgroup namespace is the cgroup in which the
-process calling unshare(2) is running.  For example, if a process in
-/batchjobs/container_id1 cgroup calls unshare, cgroup
-/batchjobs/container_id1 becomes the cgroupns root.  For the
-init_cgroup_ns, this is the real root ('/') cgroup.
+  pids.max
 
-The cgroupns root cgroup does not change even if the namespace creator
-process later moves to a different cgroup.
+ A read-write single value file which exists on non-root cgroups.  The
+ default is "max".
 
-  # ~/unshare -c # unshare cgroupns in some cgroup
-  # cat /proc/self/cgroup
-  0::/
-  # mkdir sub_cgrp_1
-  # echo 0 > sub_cgrp_1/cgroup.procs
-  # cat /proc/self/cgroup
-  0::/sub_cgrp_1
+ Hard limit of number of processes.
 
-Each process gets its namespace-specific view of "/proc/$PID/cgroup"
+  pids.current
 
-Processes running inside the cgroup namespace will be able to see
-cgroup paths (in /proc/self/cgroup) only inside their root cgroup.
-From within an unshared cgroupns:
+ A read-only single value file which exists on all cgroups.
 
-  # sleep 100000 &
-  [1] 7353
-  # echo 7353 > sub_cgrp_1/cgroup.procs
-  # cat /proc/7353/cgroup
-  0::/sub_cgrp_1
+ The number of processes currently in the cgroup and its descendants.
 
-From the initial cgroup namespace, the real cgroup path will be
-visible:
-
-  $ cat /proc/7353/cgroup
-  0::/batchjobs/container_id1/sub_cgrp_1
-
-From a sibling cgroup namespace (that is, a namespace rooted at a
-different cgroup), the cgroup path relative to its own cgroup
-namespace root will be shown.  For instance, if PID 7353's cgroup
-namespace root is at '/batchjobs/container_id2', then it will see
-
-  # cat /proc/7353/cgroup
-  0::/../container_id2/sub_cgrp_1
-
-Note that the relative path always starts with '/' to indicate that
-its relative to the cgroup namespace root of the caller.
-
-
-6-3. Migration and setns(2)
-
-Processes inside a cgroup namespace can move into and out of the
-namespace root if they have proper access to external cgroups.  For
-example, from inside a namespace with cgroupns root at
-/batchjobs/container_id1, and assuming that the global hierarchy is
-still accessible inside cgroupns:
-
-  # cat /proc/7353/cgroup
-  0::/sub_cgrp_1
-  # echo 7353 > batchjobs/container_id2/cgroup.procs
-  # cat /proc/7353/cgroup
-  0::/../container_id2
-
-Note that this kind of setup is not encouraged.  A task inside cgroup
-namespace should only be exposed to its own cgroupns hierarchy.
-
-setns(2) to another cgroup namespace is allowed when:
-
-(a) the process has CAP_SYS_ADMIN against its current user namespace
-(b) the process has CAP_SYS_ADMIN against the target cgroup
-    namespace's userns
-
-No implicit cgroup changes happen with attaching to another cgroup
-namespace.  It is expected that the someone moves the attaching
-process under the target cgroup namespace root.
-
-
-6-4. Interaction with Other Namespaces
-
-Namespace specific cgroup hierarchy can be mounted by a process
-running inside a non-init cgroup namespace.
-
-  # mount -t cgroup2 none $MOUNT_POINT
-
-This will mount the unified cgroup hierarchy with cgroupns root as the
-filesystem root.  The process needs CAP_SYS_ADMIN against its user and
-mount namespaces.
-
-The virtualization of /proc/self/cgroup file combined with restricting
-the view of cgroup hierarchy by namespace-private cgroupfs mount
-provides a properly isolated cgroup view inside the container.
+Organisational operations are not blocked by cgroup policies, so it is
+possible to have pids.current > pids.max.  This can be done by either
+setting the limit to be smaller than pids.current, or attaching enough
+processes to the cgroup such that pids.current is larger than
+pids.max.  However, it is not possible to violate a cgroup PID policy
+through fork() or clone(). These will return -EAGAIN if the creation
+of a new process would cause a cgroup policy to be violated.
 
 
 P. Information on Kernel Programming
