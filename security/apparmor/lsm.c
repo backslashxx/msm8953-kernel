@@ -39,6 +39,9 @@
 /* Flag indicating whether initialization completed */
 int apparmor_initialized __initdata;
 
+DEFINE_PER_CPU(struct aa_buffers, aa_buffers);
+
+
 /*
  * LSM hook functions
  */
@@ -864,6 +867,43 @@ static int __init set_init_cxt(void)
 	return 0;
 }
 
+static void destroy_buffers(void)
+{
+ 	u32 i, j;
+
+ 	for_each_possible_cpu(i) {
+ 		for_each_cpu_buffer(j) {
+ 			kfree(per_cpu(aa_buffers, i).buf[j]);
+ 			per_cpu(aa_buffers, i).buf[j] = NULL;
+ 		}
+ 	}
+}
+
+static int __init alloc_buffers(void)
+{
+ 	u32 i, j;
+
+ 	for_each_possible_cpu(i) {
+ 		for_each_cpu_buffer(j) {
+ 			char *buffer;
+
+ 			if (cpu_to_node(i) > num_online_nodes())
+ 				/* fallback to kmalloc for offline nodes */
+ 				buffer = kmalloc(aa_g_path_max, GFP_KERNEL);
+ 			else
+ 				buffer = kmalloc_node(aa_g_path_max, GFP_KERNEL,
+ 						      cpu_to_node(i));
+ 			if (!buffer) {
+ 				destroy_buffers();
+ 				return -ENOMEM;
+ 			}
+ 			per_cpu(aa_buffers, i).buf[j] = buffer;
+ 		}
+ 	}
+
+ 	return 0;
+}
+
 static int __init apparmor_init(void)
 {
 	int error;
@@ -880,11 +920,17 @@ static int __init apparmor_init(void)
 		goto alloc_out;
 	}
 
+	error = alloc_buffers();
+ 	if (error) {
+ 		AA_ERROR("Unable to allocate work buffers\n");
+ 		goto buffers_out;
+ 	}
+
 	error = set_init_cxt();
 	if (error) {
 		AA_ERROR("Failed to set context on init task\n");
 		aa_free_root_ns();
-		goto alloc_out;
+		goto buffers_out;
 	}
 	security_add_hooks(apparmor_hooks, ARRAY_SIZE(apparmor_hooks));
 
@@ -898,6 +944,9 @@ static int __init apparmor_init(void)
 		aa_info_message("AppArmor initialized");
 
 	return error;
+
+buffers_out:
+ 	destroy_buffers();
 
 alloc_out:
 	aa_destroy_aafs();
