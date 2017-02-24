@@ -482,8 +482,8 @@ static long madvise_dontneed(struct vm_area_struct *vma,
 	if (!can_madv_dontneed_vma(vma))
 		return -EINVAL;
 
+	userfaultfd_remove(vma, prev, start, end);
 	zap_page_range(vma, start, end - start, NULL);
-	madvise_userfault_dontneed(vma, prev, start, end);
 	return 0;
 }
 
