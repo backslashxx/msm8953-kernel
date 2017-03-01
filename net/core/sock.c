@@ -1568,11 +1568,7 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 			 */
 			if (!is_charged)
 				RCU_INIT_POINTER(newsk->sk_filter, NULL);
-			/* It is still raw copy of parent, so invalidate
-			 * destructor and make plain sk_free() */
-			newsk->sk_destruct = NULL;
-			bh_unlock_sock(newsk);
-			sk_free(newsk);
+			sk_free_unlock_clone(newsk);
 			newsk = NULL;
 			goto out;
 		}
@@ -1625,6 +1621,16 @@ out:
 	return newsk;
 }
 EXPORT_SYMBOL_GPL(sk_clone_lock);
+
+void sk_free_unlock_clone(struct sock *sk)
+{
+	/* It is still raw copy of parent, so invalidate
+	 * destructor and make plain sk_free() */
+	sk->sk_destruct = NULL;
+	bh_unlock_sock(sk);
+	sk_free(sk);
+}
+EXPORT_SYMBOL_GPL(sk_free_unlock_clone);
 
 void sk_setup_caps(struct sock *sk, struct dst_entry *dst)
 {
