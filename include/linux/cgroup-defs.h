@@ -160,7 +160,7 @@ struct css_set {
 	struct cgroup_subsys_state *subsys[CGROUP_SUBSYS_COUNT];
 
 	/* reference count */
-	atomic_t refcount;
+	refcount_t refcount;
 
 	/* the default cgroup associated with this css_set */
 	struct cgroup *dfl_cgrp;
