@@ -1072,9 +1072,33 @@ static int bpf_prog_detach(const union bpf_attr *attr)
 
 #endif /* CONFIG_CGROUP_BPF */
 
+#define BPF_PROG_TEST_RUN_LAST_FIELD test.duration
+
+static int bpf_prog_test_run(const union bpf_attr *attr,
+			     union bpf_attr __user *uattr)
+{
+	struct bpf_prog *prog;
+	int ret = -ENOTSUPP;
+
+	if (CHECK_ATTR(BPF_PROG_TEST_RUN))
+		return -EINVAL;
+
+	prog = bpf_prog_get(attr->test.prog_fd);
+	if (IS_ERR(prog))
+		return PTR_ERR(prog);
+
+	if (prog->aux->ops->test_run)
+		ret = prog->aux->ops->test_run(prog, attr, uattr);
+
+	bpf_prog_put(prog);
+	return ret;
+}
+
 static int check_uarg_tail_zero(void __user *uaddr,
 				size_t expected_size,
 				size_t actual_size)
+
+SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, size)
 {
 	unsigned char __user *addr;
 	unsigned char __user *end;
@@ -1282,7 +1306,6 @@ static int bpf_obj_get_info_by_fd(const union bpf_attr *attr,
 	case BPF_OBJ_GET:
 		err = bpf_obj_get(&attr);
 		break;
-
 #ifdef CONFIG_CGROUP_BPF
 	case BPF_PROG_ATTACH:
 		err = bpf_prog_attach(&attr);
@@ -1291,7 +1314,9 @@ static int bpf_obj_get_info_by_fd(const union bpf_attr *attr,
 		err = bpf_prog_detach(&attr);
 		break;
 #endif
-
+	case BPF_PROG_TEST_RUN:
+		err = bpf_prog_test_run(&attr, uattr);
+		break;
 	default:
 		err = -EINVAL;
 		break;
