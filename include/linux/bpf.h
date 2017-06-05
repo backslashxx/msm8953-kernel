@@ -48,6 +48,7 @@ struct bpf_map {
 	u32 max_entries;
 	u32 map_flags;
 	u32 pages;
+	u32 id;
 	bool unpriv_array;
 	/* 7 bytes hole */
 
