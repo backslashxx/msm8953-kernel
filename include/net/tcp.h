@@ -2037,6 +2037,17 @@ static inline int tcp_call_bpf(struct sock *sk, int op)
 }
 #endif
 
+static inline u32 tcp_timeout_init(struct sock *sk)
+{
+	int timeout;
+
+	timeout = tcp_call_bpf(sk, BPF_SOCK_OPS_TIMEOUT_INIT);
+
+	if (timeout <= 0)
+		timeout = TCP_TIMEOUT_INIT;
+	return timeout;
+}
+
 /*
  * Interface for adding Upper Level Protocols over TCP
  */
