@@ -3064,9 +3064,9 @@ BPF_CALL_5(bpf_setsockopt, struct bpf_sock_ops_kern *, bpf_sock,
 		default:
 			ret = -EINVAL;
 		}
+#ifdef CONFIG_INET
 	} else if (level == SOL_TCP &&
 		   sk->sk_prot->setsockopt == tcp_setsockopt) {
-#ifdef CONFIG_INET
 		if (optname == TCP_CONGESTION) {
 			char name[TCP_CA_NAME_MAX];
 
@@ -3104,7 +3104,6 @@ BPF_CALL_5(bpf_setsockopt, struct bpf_sock_ops_kern *, bpf_sock,
 				ret = -EINVAL;
 			}
 		}
-#else
 		ret = -EINVAL;
 #endif
 	} else {
