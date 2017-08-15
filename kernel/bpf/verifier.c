@@ -631,8 +631,10 @@ static void init_reg_state(struct bpf_reg_state *regs)
 {
 	int i;
 
-	for (i = 0; i < MAX_BPF_REG; i++)
+	for (i = 0; i < MAX_BPF_REG; i++) {
 		mark_reg_not_init(regs, i);
+		regs[i].live = REG_LIVE_NONE;
+	}
 
 	/* frame pointer */
 	regs[BPF_REG_FP].type = PTR_TO_STACK;
@@ -649,9 +651,26 @@ enum reg_arg_type {
 	DST_OP_NO_MARK	/* same as above, check only, don't mark */
 };
 
-static int check_reg_arg(struct bpf_reg_state *regs, u32 regno,
+static void mark_reg_read(const struct bpf_verifier_state *state, u32 regno)
+{
+	struct bpf_verifier_state *parent = state->parent;
+
+	while (parent) {
+		/* if read wasn't screened by an earlier write ... */
+		if (state->regs[regno].live & REG_LIVE_WRITTEN)
+			break;
+		/* ... then we depend on parent's value */
+		parent->regs[regno].live |= REG_LIVE_READ;
+		state = parent;
+		parent = state->parent;
+	}
+}
+
+static int check_reg_arg(struct bpf_verifier_env *env, u32 regno,
 			 enum reg_arg_type t)
 {
+	struct bpf_reg_state *regs = env->cur_state.regs;
+
 	if (regno >= MAX_BPF_REG) {
 		verbose("R%d is invalid\n", regno);
 		return -EINVAL;
@@ -663,12 +682,14 @@ static int check_reg_arg(struct bpf_reg_state *regs, u32 regno,
 			verbose("R%d !read_ok\n", regno);
 			return -EACCES;
 		}
+		mark_reg_read(&env->cur_state, regno);
 	} else {
 		/* check whether register used as dest operand can be written to */
 		if (regno == BPF_REG_FP) {
 			verbose("frame pointer is read only\n");
 			return -EACCES;
 		}
+		regs[regno].live |= REG_LIVE_WRITTEN;
 		if (t == DST_OP)
 			mark_reg_unknown(regs, regno);
 	}
@@ -714,6 +735,7 @@ static int check_stack_write(struct bpf_verifier_env *env,
 
 		/* save register state */
 		state->spilled_regs[spi] = state->regs[value_regno];
+		state->spilled_regs[spi].live |= REG_LIVE_WRITTEN;
 
 		for (i = 0; i < BPF_REG_SIZE; i++) {
 			if (state->stack_slot_type[MAX_BPF_STACK + off + i] == STACK_MISC &&
@@ -751,11 +773,26 @@ static int check_stack_write(struct bpf_verifier_env *env,
 	return 0;
 }
 
+static void mark_stack_slot_read(const struct bpf_verifier_state *state, int slot)
+{
+	struct bpf_verifier_state *parent = state->parent;
+
+	while (parent) {
+		/* if read wasn't screened by an earlier write ... */
+		if (state->spilled_regs[slot].live & REG_LIVE_WRITTEN)
+			break;
+		/* ... then we depend on parent's value */
+		parent->spilled_regs[slot].live |= REG_LIVE_READ;
+		state = parent;
+		parent = state->parent;
+	}
+}
+
 static int check_stack_read(struct bpf_verifier_state *state, int off, int size,
 			    int value_regno)
 {
 	u8 *slot_type;
-	int i;
+	int i, spi;
 
 	slot_type = &state->stack_slot_type[MAX_BPF_STACK + off];
 
@@ -771,10 +808,13 @@ static int check_stack_read(struct bpf_verifier_state *state, int off, int size,
 			}
 		}
 
-		if (value_regno >= 0)
+		spi = (MAX_BPF_STACK + off) / BPF_REG_SIZE;
+
+		if (value_regno >= 0) {
 			/* restore register state from stack */
-			state->regs[value_regno] =
-				state->spilled_regs[(MAX_BPF_STACK + off) / BPF_REG_SIZE];
+			state->regs[value_regno] = state->spilled_regs[spi];
+			mark_stack_slot_read(state, spi);
+		}
 		return 0;
 	} else {
 		for (i = 0; i < size; i++) {
@@ -1194,7 +1234,6 @@ static int check_mem_access(struct bpf_verifier_env *env, int insn_idx, u32 regn
 
 static int check_xadd(struct bpf_verifier_env *env, int insn_idx, struct bpf_insn *insn)
 {
-	struct bpf_reg_state *regs = env->cur_state.regs;
 	int err;
 
 	if ((BPF_SIZE(insn->code) != BPF_W && BPF_SIZE(insn->code) != BPF_DW) ||
@@ -1204,12 +1243,12 @@ static int check_xadd(struct bpf_verifier_env *env, int insn_idx, struct bpf_ins
 	}
 
 	/* check src1 operand */
-	err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+	err = check_reg_arg(env, insn->src_reg, SRC_OP);
 	if (err)
 		return err;
 
 	/* check src2 operand */
-	err = check_reg_arg(regs, insn->dst_reg, SRC_OP);
+	err = check_reg_arg(env, insn->dst_reg, SRC_OP);
 	if (err)
 		return err;
 
@@ -1330,10 +1369,9 @@ static int check_func_arg(struct bpf_verifier_env *env, u32 regno,
 	if (arg_type == ARG_DONTCARE)
 		return 0;
 
-	if (type == NOT_INIT) {
-		verbose("R%d !read_ok\n", regno);
-		return -EACCES;
-	}
+	err = check_reg_arg(env, regno, SRC_OP);
+	if (err)
+		return err;
 
 	if (arg_type == ARG_ANYTHING) {
 		if (is_pointer_value(env, regno)) {
@@ -1692,10 +1730,12 @@ static int check_call(struct bpf_verifier_env *env, int func_id, int insn_idx)
 	}
 
 	/* reset caller saved regs */
-	for (i = 0; i < CALLER_SAVED_REGS; i++)
+	for (i = 0; i < CALLER_SAVED_REGS; i++) {
 		mark_reg_not_init(regs, caller_saved[i]);
+		check_reg_arg(env, caller_saved[i], DST_OP_NO_MARK);
+	}
 
-	/* update return register */
+	/* update return register (already marked as written above) */
 	if (fn->ret_type == RET_INTEGER) {
 		/* sets type to SCALAR_VALUE */
 		mark_reg_unknown(regs, BPF_REG_0);
@@ -2304,7 +2344,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		}
 
 		/* check src operand */
-		err = check_reg_arg(regs, insn->dst_reg, SRC_OP);
+		err = check_reg_arg(env, insn->dst_reg, SRC_OP);
 		if (err)
 			return err;
 
@@ -2315,7 +2355,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		}
 
 		/* check dest operand */
-		err = check_reg_arg(regs, insn->dst_reg, DST_OP);
+		err = check_reg_arg(env, insn->dst_reg, DST_OP);
 		if (err)
 			return err;
 
@@ -2328,7 +2368,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 			}
 
 			/* check src operand */
-			err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+			err = check_reg_arg(env, insn->src_reg, SRC_OP);
 			if (err)
 				return err;
 		} else {
@@ -2339,7 +2379,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		}
 
 		/* check dest operand */
-		err = check_reg_arg(regs, insn->dst_reg, DST_OP);
+		err = check_reg_arg(env, insn->dst_reg, DST_OP);
 		if (err)
 			return err;
 
@@ -2389,7 +2429,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 				return -EINVAL;
 			}
 			/* check src1 operand */
-			err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+			err = check_reg_arg(env, insn->src_reg, SRC_OP);
 			if (err)
 				return err;
 		} else {
@@ -2400,7 +2440,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		}
 
 		/* check src2 operand */
-		err = check_reg_arg(regs, insn->dst_reg, SRC_OP);
+		err = check_reg_arg(env, insn->dst_reg, SRC_OP);
 		if (err)
 			return err;
 
@@ -2426,7 +2466,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		}
 
 		/* check dest operand */
-		err = check_reg_arg(regs, insn->dst_reg, DST_OP_NO_MARK);
+		err = check_reg_arg(env, insn->dst_reg, DST_OP_NO_MARK);
 		if (err)
 			return err;
 
@@ -2783,7 +2823,7 @@ static int check_cond_jmp_op(struct bpf_verifier_env *env,
 		}
 
 		/* check src1 operand */
-		err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+		err = check_reg_arg(env, insn->src_reg, SRC_OP);
 		if (err)
 			return err;
 
@@ -2800,7 +2840,7 @@ static int check_cond_jmp_op(struct bpf_verifier_env *env,
 	}
 
 	/* check src2 operand */
-	err = check_reg_arg(regs, insn->dst_reg, SRC_OP);
+	err = check_reg_arg(env, insn->dst_reg, SRC_OP);
 	if (err)
 		return err;
 
@@ -2917,7 +2957,7 @@ static int check_ld_imm(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		return -EINVAL;
 	}
 
-	err = check_reg_arg(regs, insn->dst_reg, DST_OP);
+	err = check_reg_arg(env, insn->dst_reg, DST_OP);
 	if (err)
 		return err;
 
@@ -2990,7 +3030,7 @@ static int check_ld_abs(struct bpf_verifier_env *env, struct bpf_insn *insn)
 	}
 
 	/* check whether implicit source operand (register R6) is readable */
-	err = check_reg_arg(regs, BPF_REG_6, SRC_OP);
+	err = check_reg_arg(env, BPF_REG_6, SRC_OP);
 	if (err)
 		return err;
 
@@ -3001,17 +3041,20 @@ static int check_ld_abs(struct bpf_verifier_env *env, struct bpf_insn *insn)
 
 	if (mode == BPF_IND) {
 		/* check explicit source operand */
-		err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+		err = check_reg_arg(env, insn->src_reg, SRC_OP);
 		if (err)
 			return err;
 	}
 
 	/* reset caller saved regs to unreadable */
-	for (i = 0; i < CALLER_SAVED_REGS; i++)
+	for (i = 0; i < CALLER_SAVED_REGS; i++) {
 		mark_reg_not_init(regs, caller_saved[i]);
+		check_reg_arg(env, caller_saved[i], DST_OP_NO_MARK);
+	}
 
 	/* mark destination R0 register as readable, since it contains
-	 * the value fetched from the packet
+	 * the value fetched from the packet.
+	 * Already marked as written above.
 	 */
 	mark_reg_unknown(regs, BPF_REG_0);
 	return 0;
@@ -3267,7 +3310,11 @@ static bool regsafe(struct bpf_reg_state *rold,
 		    struct bpf_reg_state *rcur,
 		    bool varlen_map_access, struct idpair *idmap)
 {
-	if (memcmp(rold, rcur, sizeof(*rold)) == 0)
+	if (!(rold->live & REG_LIVE_READ))
+		/* explored state didn't use this */
+		return true;
+
+	if (memcmp(rold, rcur, offsetof(struct bpf_reg_state, live)) == 0)
 		return true;
 
 	if (rold->type == NOT_INIT)
@@ -3445,10 +3492,56 @@ out_free:
 	return ret;
 }
 
+static bool do_propagate_liveness(const struct bpf_verifier_state *state,
+				  struct bpf_verifier_state *parent)
+{
+	bool touched = false; /* any changes made? */
+	int i;
+
+	if (!parent)
+		return touched;
+	/* Propagate read liveness of registers... */
+	BUILD_BUG_ON(BPF_REG_FP + 1 != MAX_BPF_REG);
+	/* We don't need to worry about FP liveness because it's read-only */
+	for (i = 0; i < BPF_REG_FP; i++) {
+		if (parent->regs[i].live & REG_LIVE_READ)
+			continue;
+		if (state->regs[i].live == REG_LIVE_READ) {
+			parent->regs[i].live |= REG_LIVE_READ;
+			touched = true;
+		}
+	}
+	/* ... and stack slots */
+	for (i = 0; i < MAX_BPF_STACK / BPF_REG_SIZE; i++) {
+		if (parent->stack_slot_type[i * BPF_REG_SIZE] != STACK_SPILL)
+			continue;
+		if (state->stack_slot_type[i * BPF_REG_SIZE] != STACK_SPILL)
+			continue;
+		if (parent->spilled_regs[i].live & REG_LIVE_READ)
+			continue;
+		if (state->spilled_regs[i].live == REG_LIVE_READ) {
+			parent->regs[i].live |= REG_LIVE_READ;
+			touched = true;
+		}
+	}
+	return touched;
+}
+
+static void propagate_liveness(const struct bpf_verifier_state *state,
+			       struct bpf_verifier_state *parent)
+{
+	while (do_propagate_liveness(state, parent)) {
+		/* Something changed, so we need to feed those changes onward */
+		state = parent;
+		parent = state->parent;
+	}
+}
+
 static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)
 {
 	struct bpf_verifier_state_list *new_sl;
 	struct bpf_verifier_state_list *sl;
+	int i;
 
 	sl = env->explored_states[insn_idx];
 	if (!sl)
@@ -3458,11 +3551,14 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)
 		return 0;
 
 	while (sl != STATE_LIST_MARK) {
-		if (states_equal(env, &sl->state, &env->cur_state))
+		if (states_equal(env, &sl->state, &env->cur_state)) {
 			/* reached equivalent register/stack state,
-			 * prune the search
+			 * prune the search.
+			 * Registers read by the continuation are read by us.
 			 */
+			propagate_liveness(&sl->state, &env->cur_state);
 			return 1;
+		}
 		sl = sl->next;
 	}
 
@@ -3480,6 +3576,14 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)
 	memcpy(&new_sl->state, &env->cur_state, sizeof(env->cur_state));
 	new_sl->next = env->explored_states[insn_idx];
 	env->explored_states[insn_idx] = new_sl;
+	/* connect new state to parentage chain */
+	env->cur_state.parent = &new_sl->state;
+	/* clear liveness marks in current state */
+	for (i = 0; i < BPF_REG_FP; i++)
+		env->cur_state.regs[i].live = REG_LIVE_NONE;
+	for (i = 0; i < MAX_BPF_STACK / BPF_REG_SIZE; i++)
+		if (env->cur_state.stack_slot_type[i * BPF_REG_SIZE] == STACK_SPILL)
+			env->cur_state.spilled_regs[i].live = REG_LIVE_NONE;
 	return 0;
 }
 
@@ -3506,6 +3610,7 @@ static int do_check(struct bpf_verifier_env *env)
 	bool do_print_state = false;
 
 	init_reg_state(regs);
+	state->parent = NULL;
 	insn_idx = 0;
 	env->varlen_map_value_access = false;
 	for (;;) {
@@ -3581,11 +3686,11 @@ static int do_check(struct bpf_verifier_env *env)
 			/* check for reserved fields is already done */
 
 			/* check src operand */
-			err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+			err = check_reg_arg(env, insn->src_reg, SRC_OP);
 			if (err)
 				return err;
 
-			err = check_reg_arg(regs, insn->dst_reg, DST_OP_NO_MARK);
+			err = check_reg_arg(env, insn->dst_reg, DST_OP_NO_MARK);
 			if (err)
 				return err;
 
@@ -3641,11 +3746,11 @@ static int do_check(struct bpf_verifier_env *env)
 			}
 
 			/* check src1 operand */
-			err = check_reg_arg(regs, insn->src_reg, SRC_OP);
+			err = check_reg_arg(env, insn->src_reg, SRC_OP);
 			if (err)
 				return err;
 			/* check src2 operand */
-			err = check_reg_arg(regs, insn->dst_reg, SRC_OP);
+			err = check_reg_arg(env, insn->dst_reg, SRC_OP);
 			if (err)
 				return err;
 
@@ -3676,7 +3781,7 @@ static int do_check(struct bpf_verifier_env *env)
 				return -EINVAL;
 			}
 			/* check src operand */
-			err = check_reg_arg(regs, insn->dst_reg, SRC_OP);
+			err = check_reg_arg(env, insn->dst_reg, SRC_OP);
 			if (err)
 				return err;
 
@@ -3736,7 +3841,7 @@ static int do_check(struct bpf_verifier_env *env)
 				 * of bpf_exit, which means that program wrote
 				 * something into it earlier
 				 */
-				err = check_reg_arg(regs, BPF_REG_0, SRC_OP);
+				err = check_reg_arg(env, BPF_REG_0, SRC_OP);
 				if (err)
 					return err;
 
