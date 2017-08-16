@@ -405,7 +405,6 @@ struct bpf_prog *bpf_prog_get_type_path(const char *name, enum bpf_prog_type typ
 /* Map specifics */
 struct net_device  *__dev_map_lookup_elem(struct bpf_map *map, u32 key);
 struct net_device  *__dev_map_hash_lookup_elem(struct bpf_map *map, u32 key);
-struct sock  *__sock_map_lookup_elem(struct bpf_map *map, u32 key);
 void __dev_map_insert_ctx(struct bpf_map *map, u32 index);
 void __dev_map_flush(struct bpf_map *map);
 
@@ -518,6 +517,15 @@ static inline bool bpf_prog_is_dev_bound(struct bpf_prog_aux *aux)
 	return false;
 }
 #endif /* CONFIG_NET && CONFIG_BPF_SYSCALL */
+
+#if defined(CONFIG_STREAM_PARSER) && defined(CONFIG_BPF_SYSCALL)
+struct sock  *__sock_map_lookup_elem(struct bpf_map *map, u32 key);
+#else
+static inline struct sock  *__sock_map_lookup_elem(struct bpf_map *map, u32 key)
+{
+	return NULL;
+}
+#endif
 
 /* verifier prototypes for helper functions called from eBPF programs */
 extern const struct bpf_func_proto bpf_map_lookup_elem_proto;
