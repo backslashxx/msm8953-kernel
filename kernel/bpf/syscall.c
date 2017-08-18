@@ -1332,11 +1332,11 @@ static int sockmap_get_from_fd(const union bpf_attr *attr, int ptype)
 		fdput(f);
 		bpf_prog_put(prog1);
 		bpf_prog_put(prog2);
-		return PTR_ERR(map);
+		return err;
 	}
 
 	fdput(f);
-	return err;
+	return 0;
 }
 
 #define BPF_F_ATTACH_MASK \
