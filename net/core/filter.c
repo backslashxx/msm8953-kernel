@@ -3566,6 +3566,10 @@ static bool sk_filter_is_valid_access(int off, int size,
 		switch (off) {
 		case bpf_ctx_range_till(struct __sk_buff, cb[0], cb[4]):
 			break;
+		case offsetof(struct bpf_sock, mark):
+			break;
+		case offsetof(struct bpf_sock, priority):
+			break;
 		default:
 			return false;
 		}
