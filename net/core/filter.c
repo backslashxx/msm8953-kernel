@@ -1845,6 +1845,7 @@ struct redirect_info {
 	u32 flags;
 	struct bpf_map *map;
 	struct bpf_map *map_to_flush;
+	const struct bpf_prog *map_owner;
 };
 
 static DEFINE_PER_CPU(struct redirect_info, redirect_info);
@@ -1858,7 +1859,6 @@ BPF_CALL_2(bpf_redirect, u32, ifindex, u64, flags)
 
 	ri->ifindex = ifindex;
 	ri->flags = flags;
-	ri->map = NULL;
 
 	return TC_ACT_REDIRECT;
 }
@@ -2551,6 +2551,7 @@ static int xdp_do_redirect_map(struct net_device *dev, struct xdp_buff *xdp,
 			       struct bpf_prog *xdp_prog)
 {
 	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	const struct bpf_prog *map_owner = ri->map_owner;
 	struct bpf_map *map = ri->map;
 	u32 index = ri->ifindex;
 	struct net_device *fwd;
@@ -2558,6 +2559,15 @@ static int xdp_do_redirect_map(struct net_device *dev, struct xdp_buff *xdp,
 
 	ri->ifindex = 0;
 	ri->map = NULL;
+	ri->map_owner = NULL;
+
+	/* This is really only caused by a deliberately crappy
+	 * BPF program, normally we would never hit that case,
+	 * so no need to inform someone via tracepoints either,
+	 * just bail out.
+	 */
+	if (unlikely(map_owner != xdp_prog))
+		return -EINVAL;
 
 	if (map->map_type == BPF_MAP_TYPE_DEVMAP)
 		fwd = __dev_map_lookup_elem(map, index);
@@ -2657,6 +2667,8 @@ BPF_CALL_2(bpf_xdp_redirect, u32, ifindex, u64, flags)
 
 	ri->ifindex = ifindex;
 	ri->flags = flags;
+	ri->map = NULL;
+	ri->map_owner = NULL;
 
 	return XDP_REDIRECT;
 }
@@ -2669,7 +2681,8 @@ static const struct bpf_func_proto bpf_xdp_redirect_proto = {
 	.arg2_type      = ARG_ANYTHING,
 };
 
-BPF_CALL_3(bpf_xdp_redirect_map, struct bpf_map *, map, u32, ifindex, u64, flags)
+BPF_CALL_4(bpf_xdp_redirect_map, struct bpf_map *, map, u32, ifindex, u64, flags,
+	   const struct bpf_prog *, map_owner)
 {
 	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
 
@@ -2679,10 +2692,14 @@ BPF_CALL_3(bpf_xdp_redirect_map, struct bpf_map *, map, u32, ifindex, u64, flags
 	ri->ifindex = ifindex;
 	ri->flags = flags;
 	ri->map = map;
+	ri->map_owner = map_owner;
 
 	return XDP_REDIRECT;
 }
 
+/* Note, arg4 is hidden from users and populated by the verifier
+ * with the right pointer.
+ */
 static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
 	.func           = bpf_xdp_redirect_map,
 	.gpl_only       = false,
