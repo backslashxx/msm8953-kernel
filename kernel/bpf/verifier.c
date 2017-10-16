@@ -962,10 +962,6 @@ static int check_ctx_access(struct bpf_verifier_env *env, int insn_idx, int off,
 		.reg_type = *reg_type,
 	};
 
-	/* for analyzer ctx accesses are already validated and converted */
-	if (env->analyzer_ops)
-		return 0;
-
 	if (env->ops->is_valid_access &&
 	    env->ops->is_valid_access(off, size, t, env->prog, &info)) {
 		/* A non zero info.ctx_field_size indicates that this field is a
@@ -975,9 +971,12 @@ static int check_ctx_access(struct bpf_verifier_env *env, int insn_idx, int off,
 		 * will only allow for whole field access and rejects any other
 		 * type of narrower access.
 		 */
-		env->insn_aux_data[insn_idx].ctx_field_size = info.ctx_field_size;
 		*reg_type = info.reg_type;
 
+		if (env->analyzer_ops)
+			return 0;
+
+		env->insn_aux_data[insn_idx].ctx_field_size = info.ctx_field_size;
 		/* remember the offset of last byte accessed in ctx */
 		if (env->prog->aux->max_ctx_offset < off + size)
 			env->prog->aux->max_ctx_offset = off + size;
@@ -4780,11 +4779,20 @@ err_free_env:
 	return ret;
 }
 
+static const struct bpf_verifier_ops * const bpf_analyzer_ops[] = {
+	[BPF_PROG_TYPE_XDP]		= &xdp_analyzer_ops,
+	[BPF_PROG_TYPE_SCHED_CLS]	= &tc_cls_act_analyzer_ops,
+};
+
 int bpf_analyzer(struct bpf_prog *prog, const struct bpf_ext_analyzer_ops *ops,
 		 void *priv)
 {
 	struct bpf_verifier_env *env;
 	int ret;
+
+	if (prog->type >= ARRAY_SIZE(bpf_analyzer_ops) ||
+	    !bpf_analyzer_ops[prog->type])
+		return -EOPNOTSUPP;
 
 	env = kzalloc(sizeof(struct bpf_verifier_env), GFP_KERNEL);
 	if (!env)
@@ -4796,7 +4804,7 @@ int bpf_analyzer(struct bpf_prog *prog, const struct bpf_ext_analyzer_ops *ops,
 	if (!env->insn_aux_data)
 		goto err_free_env;
 	env->prog = prog;
-	env->ops = bpf_verifier_ops[env->prog->type];
+	env->ops = bpf_analyzer_ops[env->prog->type];
 	env->analyzer_ops = ops;
 	env->analyzer_priv = priv;
 
