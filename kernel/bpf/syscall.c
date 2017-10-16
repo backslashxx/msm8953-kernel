@@ -947,6 +947,12 @@ static int map_update_elem(union bpf_attr *attr)
 		goto out;
 	}
 
+	/* Need to create a kthread, thus must support schedule */
+ 	if (map->map_type == BPF_MAP_TYPE_CPUMAP) {
+ 		err = map->ops->map_update_elem(map, key, value, attr->flags);
+ 		goto out;
+ 	}
+
 	/* must increment bpf_prog_active to avoid kprobe+bpf triggering from
 	 * inside bpf map update or delete otherwise deadlocks are possible
 	 */
