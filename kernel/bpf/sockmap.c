@@ -489,6 +489,9 @@ static struct bpf_map *sock_map_alloc(union bpf_attr *attr)
 	int err = -EINVAL;
 	u64 cost;
 
+	if (!capable(CAP_NET_ADMIN))
+		return ERR_PTR(-EPERM);
+
 	/* check sanity of attributes */
 	if (attr->max_entries == 0 || attr->key_size != 4 ||
 	    attr->value_size != 4 || attr->map_flags & ~SOCK_CREATE_FLAG_MASK)
