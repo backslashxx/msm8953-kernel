@@ -1143,12 +1143,14 @@ static int check_mem_access(struct bpf_verifier_env *env, int insn_idx, u32 regn
 		 * determine what type of data were returned.
 		 */
 		if (reg->off) {
-			verbose("dereference of modified ctx ptr R%d off=%d+%d, ctx+const is allowed, ctx+const+const is not\n",
+			verbose(env,
+				"dereference of modified ctx ptr R%d off=%d+%d, ctx+const is allowed, ctx+const+const is not\n",
 				regno, reg->off, off - reg->off);
 			return -EACCES;
 		}
 		if (!tnum_is_const(reg->var_off) || reg->var_off.value) {
 			char tn_buf[48];
+
 			tnum_strn(tn_buf, sizeof(tn_buf), reg->var_off);
 			verbose(env,
 				"variable ctx access var_off=%s off=%d size=%d",
