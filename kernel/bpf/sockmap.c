@@ -96,6 +96,14 @@ static inline struct smap_psock *smap_psock_sk(const struct sock *sk)
 	return rcu_dereference_sk_user_data(sk);
 }
 
+/* compute the linear packet data range [data, data_end) for skb when
+ * sk_skb type programs are in use.
+ */
+static inline void bpf_compute_data_end_sk_skb(struct sk_buff *skb)
+{
+	TCP_SKB_CB(skb)->bpf.data_end = skb->data + skb_headlen(skb);
+}
+
 static int smap_verdict_func(struct smap_psock *psock, struct sk_buff *skb)
 {
 	struct bpf_prog *prog = READ_ONCE(psock->bpf_verdict);
@@ -111,7 +119,7 @@ static int smap_verdict_func(struct smap_psock *psock, struct sk_buff *skb)
 	 */
 	TCP_SKB_CB(skb)->bpf.map = NULL;
 	skb->sk = psock->sock;
-	bpf_compute_data_pointers(skb);
+	bpf_compute_data_end_sk_skb(skb);
 	preempt_disable();
 	rc = (*prog->bpf_func)(skb, prog->insnsi);
 	preempt_enable();
@@ -371,7 +379,7 @@ static int smap_parse_func_strparser(struct strparser *strp,
 	 * any socket yet.
 	 */
 	skb->sk = psock->sock;
-	bpf_compute_data_pointers(skb);
+	bpf_compute_data_end_sk_skb(skb);
 	rc = (*prog->bpf_func)(skb, prog->insnsi);
 	skb->sk = NULL;
 	rcu_read_unlock();
