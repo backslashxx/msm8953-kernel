@@ -154,9 +154,7 @@ struct bpf_verifier_env {
 	bool strict_alignment;		/* perform strict pointer alignment checks */
 	struct bpf_verifier_state *cur_state; /* current verifier state */
 	struct bpf_verifier_state_list **explored_states; /* search pruning optimization */
-	const struct bpf_ext_analyzer_ops *analyzer_ops; /* external analyzer ops */
 	const struct bpf_ext_analyzer_ops *dev_ops; /* device analyzer ops */
-	void *analyzer_priv; /* pointer to external analyzer's private data */
 	struct bpf_map *used_maps[MAX_USED_MAPS]; /* array of map's used by eBPF program */
 	u32 used_map_cnt;		/* number of used maps */
 	u32 id_gen;			/* used to generate unique reg IDs */
@@ -180,8 +178,5 @@ static inline struct bpf_reg_state *cur_regs(struct bpf_verifier_env *env)
 {
 	return env->cur_state->regs;
 }
-
-int bpf_analyzer(struct bpf_prog *prog, const struct bpf_ext_analyzer_ops *ops,
-		 void *priv);
 
 #endif /* _LINUX_BPF_VERIFIER_H */
