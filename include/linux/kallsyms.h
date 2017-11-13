@@ -13,6 +13,16 @@
 #define KSYM_SYMBOL_LEN (sizeof("%s+%#lx/%#lx [%s]") + (KSYM_NAME_LEN - 1) + \
 			 2*(BITS_PER_LONG*3/10) + (MODULE_NAME_LEN - 1) + 1)
 
+/* How and when do we show kallsyms values? */
+extern int kallsyms_show_value(void);
+#ifndef CONFIG_64BIT
+# define KALLSYM_FMT "%08lx"
+#else
+# define KALLSYM_FMT "%016lx"
+#endif
+
+struct module;
+
 #ifdef CONFIG_KALLSYMS
 /* Lookup the address for a symbol. Returns 0 if not found. */
 unsigned long kallsyms_lookup_name(const char *name);
