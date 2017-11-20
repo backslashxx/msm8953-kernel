@@ -168,7 +168,7 @@ struct bpf_verifier_env {
 #if defined(CONFIG_NET) && defined(CONFIG_BPF_SYSCALL)
 int bpf_prog_offload_verifier_prep(struct bpf_verifier_env *env);
 #else
-int bpf_prog_offload_verifier_prep(struct bpf_verifier_env *env)
+static inline int bpf_prog_offload_verifier_prep(struct bpf_verifier_env *env)
 {
 	return -EOPNOTSUPP;
 }
