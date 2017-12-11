@@ -1834,6 +1834,25 @@ bool bpf_prog_array_is_empty(struct bpf_prog_array *array)
 	return true;
 }
 
+int bpf_prog_array_copy_info(struct bpf_prog_array __rcu *array,
+ 			__u32 __user *prog_ids, u32 request_cnt,
+ 			__u32 __user *prog_cnt)
+{
+ 	u32 cnt = 0;
+
+ 	if (array)
+ 		cnt = bpf_prog_array_length(array);
+
+ 	if (copy_to_user(prog_cnt, &cnt, sizeof(cnt)))
+ 		return -EFAULT;
+
+ 	/* return early if user requested only program count or nothing to copy */
+ 	if (!request_cnt || !cnt)
+ 		return 0;
+
+ 	return bpf_prog_array_copy_to_user(array, prog_ids, request_cnt);
+}
+
 void bpf_prog_array_delete_safe(struct bpf_prog_array __rcu *array,
 				struct bpf_prog *old_prog)
 {
@@ -1926,6 +1945,8 @@ int bpf_prog_array_copy_to_user(struct bpf_prog_array __rcu *array,
 	rcu_read_lock();
 	item = rcu_dereference(array)->items;
 	for (; item->prog; item++) {
+		if (item->prog != &dummy_bpf_prog.prog)
+ 			continue;
 		id = item->prog->aux->id;
 		if (copy_to_user(prog_ids + i, &id, sizeof(id))) {
 			rcu_read_unlock();
