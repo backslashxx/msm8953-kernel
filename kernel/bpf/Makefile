@@ -8,9 +8,11 @@ obj-$(CONFIG_BPF_SYSCALL) += btf.o
 ifeq ($(CONFIG_NET),y)
 obj-$(CONFIG_BPF_SYSCALL) += devmap.o
 ifeq ($(CONFIG_STREAM_PARSER),y)
+ifeq ($(CONFIG_INET),y)
 obj-$(CONFIG_BPF_SYSCALL) += sockmap.o
 endif
 obj-$(CONFIG_BPF_SYSCALL) += offload.o
+endif
 endif
 ifeq ($(CONFIG_PERF_EVENTS),y)
 obj-$(CONFIG_BPF_SYSCALL) += stackmap.o
