@@ -5435,6 +5435,10 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 			 * to avoid out-of-bounds cpu speculation
 			 */
 			map_ptr = env->insn_aux_data[i + delta].map_ptr;
+			if (map_ptr == BPF_MAP_PTR_POISON) {
+				verbose(env, "tail_call obusing map_ptr\n");
+				return -EINVAL;
+			}
 			if (!map_ptr->unpriv_array)
 				continue;
 			insn_buf[0] = BPF_JMP_IMM(BPF_JGE, BPF_REG_3,
