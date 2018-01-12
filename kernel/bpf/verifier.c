@@ -1546,6 +1546,7 @@ continue_func:
 	goto continue_func;
 }
 
+#ifndef CONFIG_BPF_JIT_ALWAYS_ON
 static int get_callee_stack_depth(struct bpf_verifier_env *env,
 				  const struct bpf_insn *insn, int idx)
 {
@@ -1560,6 +1561,7 @@ static int get_callee_stack_depth(struct bpf_verifier_env *env,
 	subprog++;
 	return env->subprog_stack_depth[subprog];
 }
+#endif
 
 /* truncate register to smaller size (in bytes)
  * must be called with size < BPF_REG_SIZE
@@ -5340,14 +5342,19 @@ out_free:
 
 static int fixup_call_args(struct bpf_verifier_env *env)
 {
+#ifndef CONFIG_BPF_JIT_ALWAYS_ON
 	struct bpf_prog *prog = env->prog;
 	struct bpf_insn *insn = prog->insnsi;
 	int i, depth;
+#endif
+	int err = 0;
 
-	if (env->prog->jit_requested)
-		if (jit_subprogs(env) == 0)
+	if (env->prog->jit_requested) {
+		err = jit_subprogs(env);
+		if (err == 0)
 			return 0;
-
+	}
+#ifndef CONFIG_BPF_JIT_ALWAYS_ON
 	for (i = 0; i < prog->len; i++, insn++) {
 		if (insn->code != (BPF_JMP | BPF_CALL) ||
 		    insn->src_reg != BPF_PSEUDO_CALL)
@@ -5357,7 +5364,9 @@ static int fixup_call_args(struct bpf_verifier_env *env)
 			return depth;
 		bpf_patch_call_args(insn, depth);
 	}
-	return 0;
+	err = 0;
+#endif
+	return err;
 }
 
 /* fixup insn->imm field of bpf_call instructions
