@@ -1371,7 +1371,7 @@ static bool is_pointer_value(struct bpf_verifier_env *env, int regno)
 
 static bool is_ctx_reg(struct bpf_verifier_env *env, int regno)
 {
-	const struct bpf_reg_state *reg = &env->cur_state->regs[regno];
+	const struct bpf_reg_state *reg = cur_regs(env) + regno;
 
 	return reg->type == PTR_TO_CTX;
 }
