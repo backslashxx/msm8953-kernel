@@ -365,7 +365,9 @@ static struct ctl_table net_core_table[] = {
 		.data		= &bpf_jit_kallsyms,
 		.maxlen		= sizeof(int),
 		.mode		= 0600,
-		.proc_handler	= proc_dointvec,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &two,
 	},
 # endif
 	{
