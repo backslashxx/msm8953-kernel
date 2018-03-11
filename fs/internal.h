@@ -95,6 +95,8 @@ extern struct dentry *mount_fs(struct file_system_type *,
 			       int, const char *, struct vfsmount *, void *);
 extern struct super_block *user_get_super(dev_t);
 
+long do_faccessat(int dfd, const char __user *filename, int mode);
+
 /*
  * open.c
  */
