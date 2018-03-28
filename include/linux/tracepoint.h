@@ -31,6 +31,12 @@ struct trace_enum_map {
 	unsigned long		enum_value;
 };
 
+struct bpf_raw_event_map {
+	struct tracepoint       *tp;
+ 	void                    *bpf_func;
+ 	u32                     num_args;
+} __aligned(32);
+
 #define TRACEPOINT_DEFAULT_PRIO	10
 
 extern int
