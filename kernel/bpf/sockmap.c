@@ -2040,7 +2040,7 @@ static int sock_map_update_elem(struct bpf_map *map,
 	return err;
 }
 
-static void sock_map_release(struct bpf_map *map, struct file *map_file)
+static void sock_map_release(struct bpf_map *map)
 {
 	struct bpf_sock_progs *progs;
 	struct bpf_prog *orig;
@@ -2455,7 +2455,7 @@ const struct bpf_map_ops sock_map_ops = {
 	.map_get_next_key = sock_map_get_next_key,
 	.map_update_elem = sock_map_update_elem,
 	.map_delete_elem = sock_map_delete_elem,
-	.map_release = sock_map_release,
+	.map_release_uref = sock_map_release,
 };
 
 const struct bpf_map_ops sock_hash_ops = {
