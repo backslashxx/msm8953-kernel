@@ -3107,6 +3107,7 @@ set_compat:
 	to->tunnel_id = be64_to_cpu(info->key.tun_id);
 	to->tunnel_tos = info->key.tos;
 	to->tunnel_ttl = info->key.ttl;
+	to->tunnel_ext = 0;
 
 	if (flags & BPF_F_TUNINFO_IPV6) {
 		memcpy(to->remote_ipv6, &info->key.u.ipv6.src,
@@ -3114,6 +3115,8 @@ set_compat:
 		to->tunnel_label = be32_to_cpu(info->key.label);
 	} else {
 		to->remote_ipv4 = be32_to_cpu(info->key.u.ipv4.src);
+		memset(&to->remote_ipv6[1], 0, sizeof(__u32) * 3);
+		to->tunnel_label = 0;
 	}
 
 	if (unlikely(size != sizeof(struct bpf_tunnel_key)))
