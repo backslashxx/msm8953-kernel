@@ -164,11 +164,48 @@ int __cgroup_bpf_run_filter_sock_ops(struct sock *sk,
 	}								       \
 	__ret;								       \
 })
+
+#define BPF_CGROUP_RUN_PROG_DEVICE_CGROUP(type, major, minor, access)	      \
+({									      \
+	int __ret = 0;							      \
+	if (cgroup_bpf_enabled)						      \
+		__ret = __cgroup_bpf_check_dev_permission(type, major, minor, \
+							  access,	      \
+							  BPF_CGROUP_DEVICE); \
+									      \
+	__ret;								      \
+})
+int cgroup_bpf_prog_attach(const union bpf_attr *attr,
+			   enum bpf_prog_type ptype, struct bpf_prog *prog);
+int cgroup_bpf_prog_detach(const union bpf_attr *attr,
+			   enum bpf_prog_type ptype);
+int cgroup_bpf_prog_query(const union bpf_attr *attr,
+			  union bpf_attr __user *uattr);
 #else
 
+struct bpf_prog;
 struct cgroup_bpf {};
 static inline void cgroup_bpf_put(struct cgroup *cgrp) {}
 static inline int cgroup_bpf_inherit(struct cgroup *cgrp) { return 0; }
+
+static inline int cgroup_bpf_prog_attach(const union bpf_attr *attr,
+					 enum bpf_prog_type ptype,
+					 struct bpf_prog *prog)
+{
+	return -EINVAL;
+}
+
+static inline int cgroup_bpf_prog_detach(const union bpf_attr *attr,
+					 enum bpf_prog_type ptype)
+{
+	return -EINVAL;
+}
+
+static inline int cgroup_bpf_prog_query(const union bpf_attr *attr,
+					union bpf_attr __user *uattr)
+{
+	return -EINVAL;
+}
 
 #define cgroup_bpf_enabled (0)
 #define BPF_CGROUP_PRE_CONNECT_ENABLED(sk) (0)
