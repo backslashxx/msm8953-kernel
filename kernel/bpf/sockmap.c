@@ -317,10 +317,12 @@ static void bpf_tcp_close(struct sock *sk, long timeout)
 	struct smap_psock *psock;
 	struct sock *osk;
 
+	lock_sock(sk);
 	rcu_read_lock();
 	psock = smap_psock_sk(sk);
 	if (unlikely(!psock)) {
 		rcu_read_unlock();
+		release_sock(sk);
 		return sk->sk_prot->close(sk, timeout);
 	}
 
@@ -376,6 +378,7 @@ static void bpf_tcp_close(struct sock *sk, long timeout)
 		e = psock_map_pop(sk, psock);
 	}
 	rcu_read_unlock();
+	release_sock(sk);
 	close_fun(sk, timeout);
 }
 
@@ -2028,7 +2031,13 @@ static int sock_map_update_elem(struct bpf_map *map,
 		return -EOPNOTSUPP;
 	}
 
+	lock_sock(skops.sk);
+	preempt_disable();
+	rcu_read_lock();
 	err = sock_map_ctx_update_elem(&skops, map, key, flags);
+	rcu_read_unlock();
+	preempt_enable();
+	release_sock(skops.sk);
 	fput(socket->file);
 	return err;
 }
@@ -2369,7 +2378,13 @@ static int sock_hash_update_elem(struct bpf_map *map,
 		return -EINVAL;
 	}
 
+	lock_sock(skops.sk);
+	preempt_disable();
+	rcu_read_lock();
 	err = sock_hash_ctx_update_elem(&skops, map, key, flags);
+	rcu_read_unlock();
+	preempt_enable();
+	release_sock(skops.sk);
 	fput(socket->file);
 	return err;
 }
