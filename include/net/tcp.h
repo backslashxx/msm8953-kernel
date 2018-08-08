@@ -37,6 +37,7 @@
 #include <net/inet_hashtables.h>
 #include <net/checksum.h>
 #include <net/request_sock.h>
+#include <net/sock_reuseport.h>
 #include <net/sock.h>
 #include <net/snmp.h>
 #include <net/ip.h>
@@ -522,9 +523,22 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb);
  */
 static inline void tcp_synq_overflow(const struct sock *sk)
 {
-	unsigned long last_overflow = tcp_sk(sk)->rx_opt.ts_recent_stamp;
+	unsigned long last_overflow;
 	unsigned long now = jiffies;
 
+	if (sk->sk_reuseport) {
+		struct sock_reuseport *reuse;
+
+		reuse = rcu_dereference(sk->sk_reuseport_cb);
+		if (likely(reuse)) {
+			last_overflow = READ_ONCE(reuse->synq_overflow_ts);
+			if (time_after32(now, last_overflow + HZ))
+				WRITE_ONCE(reuse->synq_overflow_ts, now);
+			return;
+		}
+	}
+
+	last_overflow = tcp_sk(sk)->rx_opt.ts_recent_stamp;
 	if (!time_between32(now, last_overflow, last_overflow + HZ))
 		tcp_sk(sk)->rx_opt.ts_recent_stamp = now;
 }
@@ -532,8 +546,20 @@ static inline void tcp_synq_overflow(const struct sock *sk)
 /* syncookies: no recent synqueue overflow on this listening socket? */
 static inline bool tcp_synq_no_recent_overflow(const struct sock *sk)
 {
-	unsigned long last_overflow = tcp_sk(sk)->rx_opt.ts_recent_stamp;
+	unsigned long last_overflow;
 
+	if (sk->sk_reuseport) {
+		struct sock_reuseport *reuse;
+
+		reuse = rcu_dereference(sk->sk_reuseport_cb);
+		if (likely(reuse)) {
+			last_overflow = READ_ONCE(reuse->synq_overflow_ts);
+			return time_after32(now, last_overflow +
+					    TCP_SYNCOOKIE_VALID);
+		}
+	}
+
+	last_overflow = tcp_sk(sk)->rx_opt.ts_recent_stamp;
 	return time_after(jiffies, last_overflow + TCP_SYNCOOKIE_VALID);
 }
 
