@@ -164,6 +164,7 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_SK_MSG,
 	BPF_PROG_TYPE_RAW_TRACEPOINT = 17,
 	BPF_PROG_TYPE_CGROUP_SOCK_ADDR = 18,
+	BPF_PROG_TYPE_SK_REUSEPORT = 21,
 	BPF_PROG_TYPE_FLOW_DISSECTOR = 22,
 	BPF_PROG_TYPE_CGROUP_SYSCTL = 23,
 	BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE = 24,
@@ -1024,6 +1025,15 @@ union bpf_attr {
  *		the shared data.
  *	Return
  *		A pointer to the local storage area.
+ *
+ * int bpf_sk_select_reuseport(struct sk_reuseport_md *reuse, struct bpf_map *map, void *key, u64 flags)
+ *	Description
+ *		Select a **SO_REUSEPORT** socket from a
+ *		**BPF_MAP_TYPE_REUSEPORT_SOCKARRAY** *map*.
+ *		It checks the selected socket is matching the incoming
+ *		request in the socket buffer.
+ *	Return
+ *		0 on success, or a negative error in case of failure.
  *
  * struct bpf_sock *bpf_sk_lookup_tcp(void *ctx, struct bpf_sock_tuple *tuple, u32 tuple_size, u64 netns, u64 flags)
  *	Description
@@ -1899,6 +1909,30 @@ struct sk_msg_md {
 	__u32 local_port;	/* stored in host byte order */
 
 	__bpf_md_ptr(struct bpf_sock *, sk); /* current socket */
+};
+
+struct sk_reuseport_md {
+	/*
+	 * Start of directly accessible data. It begins from
+	 * the tcp/udp header.
+	 */
+	void *data;
+	void *data_end;		/* End of directly accessible data */
+	/*
+	 * Total length of packet (starting from the tcp/udp header).
+	 * Note that the directly accessible bytes (data_end - data)
+	 * could be less than this "len".  Those bytes could be
+	 * indirectly read by a helper "bpf_skb_load_bytes()".
+	 */
+	__u32 len;
+	/*
+	 * Eth protocol in the mac header (network byte order). e.g.
+	 * ETH_P_IP(0x0800) and ETH_P_IPV6(0x86DD)
+	 */
+	__u32 eth_protocol;
+	__u32 ip_protocol;	/* IP protocol. e.g. IPPROTO_TCP, IPPROTO_UDP */
+	__u32 bind_inany;	/* Is sock bound to an INANY address? */
+	__u32 hash;		/* A hash of the packet 4 tuples */
 };
 
 #define BPF_TAG_SIZE	8

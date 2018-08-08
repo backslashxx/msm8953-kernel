@@ -32,6 +32,7 @@ struct seccomp_data;
 struct bpf_prog_aux;
 struct ctl_table;
 struct ctl_table_header;
+struct sock_reuseport;
 
 /* ArgX, context and stack frame pointer register positions. Note,
  * Arg1, Arg2, Arg3, etc are used as argument mappings of function
@@ -972,6 +973,20 @@ xdp_data_meta_unsupported(const struct xdp_buff *xdp)
 }
 
 void bpf_warn_invalid_xdp_action(u32 act);
+
+#ifdef CONFIG_INET
+struct sock *bpf_run_sk_reuseport(struct sock_reuseport *reuse, struct sock *sk,
+				  struct bpf_prog *prog, struct sk_buff *skb,
+				  u32 hash);
+#else
+static inline struct sock *
+bpf_run_sk_reuseport(struct sock_reuseport *reuse, struct sock *sk,
+		     struct bpf_prog *prog, struct sk_buff *skb,
+		     u32 hash)
+{
+	return NULL;
+}
+#endif
 
 #ifdef CONFIG_BPF_JIT
 extern int bpf_jit_enable;
