@@ -415,6 +415,13 @@ static const char * const reg_type_str[] = {
 	[PTR_TO_MEM_OR_NULL]	= "mem_or_null",
 };
 
+static char slot_type_char[] = {
+	[STACK_INVALID]	= '?',
+	[STACK_SPILL]	= 'r',
+	[STACK_MISC]	= 'm',
+	[STACK_ZERO]	= '0',
+};
+
 static void print_liveness(struct bpf_verifier_env *env,
 			   enum bpf_reg_liveness live)
 {
@@ -505,15 +512,26 @@ static void print_verifier_state(struct bpf_verifier_env *env,
 		}
 	}
 	for (i = 0; i < state->allocated_stack / BPF_REG_SIZE; i++) {
-		if (state->stack[i].slot_type[0] == STACK_SPILL) {
-			verbose(env, " fp%d",
-				(-i - 1) * BPF_REG_SIZE);
-			print_liveness(env, state->stack[i].spilled_ptr.live);
+		char types_buf[BPF_REG_SIZE + 1];
+		bool valid = false;
+		int j;
+
+		for (j = 0; j < BPF_REG_SIZE; j++) {
+			if (state->stack[i].slot_type[j] != STACK_INVALID)
+				valid = true;
+			types_buf[j] = slot_type_char[
+					state->stack[i].slot_type[j]];
+		}
+		types_buf[BPF_REG_SIZE] = 0;
+		if (!valid)
+			continue;
+		verbose(env, " fp%d", (-i - 1) * BPF_REG_SIZE);
+		print_liveness(env, state->stack[i].spilled_ptr.live);
+		if (state->stack[i].slot_type[0] == STACK_SPILL)
 			verbose(env, "=%s",
 				reg_type_str[state->stack[i].spilled_ptr.type]);
-		}
-		if (state->stack[i].slot_type[0] == STACK_ZERO)
-			verbose(env, " fp%d=0", (-i - 1) * BPF_REG_SIZE);
+		else
+			verbose(env, "=%s", types_buf);
 	}
 	if (state->acquired_refs && state->refs[0].id) {
 		verbose(env, " refs=%d", state->refs[0].id);
