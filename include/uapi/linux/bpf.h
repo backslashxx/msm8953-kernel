@@ -159,6 +159,7 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_SK_MSG,
 	BPF_PROG_TYPE_RAW_TRACEPOINT = 17,
 	BPF_PROG_TYPE_CGROUP_SOCK_ADDR = 18,
+	BPF_PROG_TYPE_FLOW_DISSECTOR = 22,
 	BPF_PROG_TYPE_CGROUP_SYSCTL = 23,
 	BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE = 24,
 	BPF_PROG_TYPE_CGROUP_SOCKOPT = 25,
@@ -181,6 +182,7 @@ enum bpf_attach_type {
 	BPF_CGROUP_INET6_POST_BIND,
 	BPF_CGROUP_UDP4_SENDMSG,
 	BPF_CGROUP_UDP6_SENDMSG,
+	BPF_FLOW_DISSECTOR = 17,
 	BPF_CGROUP_SYSCTL = 18,
 	BPF_CGROUP_UDP4_RECVMSG,
 	BPF_CGROUP_UDP6_RECVMSG,
@@ -1606,6 +1608,8 @@ struct __sk_buff {
 	__u32 data_meta;
 	__u32 wire_len;
 	__bpf_md_ptr(struct bpf_sock *, sk);
+
+	struct bpf_flow_keys *flow_keys;
 };
 
 struct bpf_tunnel_key {
@@ -2038,6 +2042,29 @@ struct bpf_sockopt {
 
 struct bpf_raw_tracepoint_args {
  	__u64 args[0];
+};
+
+struct bpf_flow_keys {
+ 	__u16	nhoff;
+ 	__u16	thoff;
+ 	__u16	addr_proto;			/* ETH_P_* of valid addrs */
+ 	__u8	is_frag;
+ 	__u8	is_first_frag;
+ 	__u8	is_encap;
+ 	__u8	ip_proto;
+ 	__be16	n_proto;
+ 	__be16	sport;
+ 	__be16	dport;
+ 	union {
+ 		struct {
+ 			__be32	ipv4_src;
+ 			__be32	ipv4_dst;
+ 		};
+ 		struct {
+ 			__u32	ipv6_src[4];	/* in6_addr; network order */
+ 			__u32	ipv6_dst[4];	/* in6_addr; network order */
+ 		};
+ 	};
 };
 
 #endif /* _UAPI__LINUX_BPF_H__ */
