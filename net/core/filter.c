@@ -4722,6 +4722,17 @@ sock_ops_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 }
 
 static const struct bpf_func_proto *
+flow_dissector_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
+{
+ 	switch (func_id) {
+ 	case BPF_FUNC_skb_load_bytes:
+ 		return &bpf_skb_load_bytes_proto;
+ 	default:
+ 		return bpf_base_func_proto(func_id, prog);
+ 	}
+}
+
+static const struct bpf_func_proto *
 lwt_xmit_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 {
 	switch (func_id) {
@@ -4789,6 +4800,10 @@ static bool bpf_skb_is_valid_access(int off, int size, enum bpf_access_type type
 			return false;
 		info->reg_type = PTR_TO_SOCK_COMMON_OR_NULL;
 		break;
+	case bpf_ctx_range(struct __sk_buff, flow_keys):
+ 		if (size != sizeof(struct bpf_flow_keys *))
+ 			return false;
+ 		break;
 	default:
 		/* Only narrow read access allowed for now. */
 		if (type == BPF_WRITE) {
@@ -4851,6 +4866,7 @@ static bool lwt_is_valid_access(int off, int size,
 {
 	switch (off) {
 	case bpf_ctx_range(struct __sk_buff, tc_classid):
+	case bpf_ctx_range(struct __sk_buff, flow_keys):
 	case bpf_ctx_range_till(struct __sk_buff, family, local_port):
 	case bpf_ctx_range(struct __sk_buff, data_meta):
 	case bpf_ctx_range(struct __sk_buff, wire_len):
@@ -4889,6 +4905,7 @@ static bool sk_filter_is_valid_access(int off, int size,
 	case bpf_ctx_range(struct __sk_buff, tc_classid):
 	case bpf_ctx_range(struct __sk_buff, data):
 	case bpf_ctx_range(struct __sk_buff, data_end):
+	case bpf_ctx_range(struct __sk_buff, flow_keys):
 	case bpf_ctx_range_till(struct __sk_buff, family, local_port):
 	case bpf_ctx_range(struct __sk_buff, wire_len):
 		return false;
@@ -5070,6 +5087,7 @@ static bool tc_cls_act_is_valid_access(int off, int size,
 		case bpf_ctx_range(struct __sk_buff, tc_index):
 		case bpf_ctx_range(struct __sk_buff, priority):
 		case bpf_ctx_range(struct __sk_buff, tc_classid):
+		case bpf_ctx_range(struct __sk_buff, flow_keys):
 		case bpf_ctx_range_till(struct __sk_buff, cb[0], cb[4]):
 			break;
 		default:
@@ -5254,6 +5272,7 @@ static bool sk_skb_is_valid_access(int off, int size,
 				   struct bpf_insn_access_aux *info)
 {
 	switch (off) {
+	case bpf_ctx_range(struct __sk_buff, flow_keys):
 	case bpf_ctx_range(struct __sk_buff, tc_classid):
 	case bpf_ctx_range(struct __sk_buff, data_meta):
 	case bpf_ctx_range(struct __sk_buff, wire_len):
@@ -5281,6 +5300,38 @@ static bool sk_skb_is_valid_access(int off, int size,
 	}
 
 	return bpf_skb_is_valid_access(off, size, type, prog, info);
+}
+
+static bool flow_dissector_is_valid_access(int off, int size,
+ 					   enum bpf_access_type type,
+ 					   const struct bpf_prog *prog,
+ 					   struct bpf_insn_access_aux *info)
+{
+ 	if (type == BPF_WRITE) {
+ 		switch (off) {
+ 		case bpf_ctx_range_till(struct __sk_buff, cb[0], cb[4]):
+ 			break;
+ 		default:
+ 			return false;
+ 		}
+ 	}
+
+ 	switch (off) {
+ 	case bpf_ctx_range(struct __sk_buff, data):
+ 		info->reg_type = PTR_TO_PACKET;
+ 		break;
+ 	case bpf_ctx_range(struct __sk_buff, data_end):
+ 		info->reg_type = PTR_TO_PACKET_END;
+ 		break;
+ 	case bpf_ctx_range(struct __sk_buff, flow_keys):
+ 		info->reg_type = PTR_TO_FLOW_KEYS;
+ 		break;
+ 	case bpf_ctx_range(struct __sk_buff, tc_classid):
+ 	case bpf_ctx_range_till(struct __sk_buff, family, local_port):
+ 		return false;
+ 	}
+
+ 	return bpf_skb_is_valid_access(off, size, type, prog, info);
 }
 
 static bool sk_msg_is_valid_access(int off, int size,
@@ -5629,6 +5680,15 @@ static u32 bpf_convert_ctx_access(enum bpf_access_type type,
 				      si->dst_reg, si->src_reg,
 				      offsetof(struct sk_buff, sk));
 		break;
+
+	case offsetof(struct __sk_buff, flow_keys):
+ 		off  = si->off;
+ 		off -= offsetof(struct __sk_buff, flow_keys);
+ 		off += offsetof(struct sk_buff, cb);
+ 		off += offsetof(struct qdisc_skb_cb, flow_keys);
+ 		*insn++ = BPF_LDX_MEM(BPF_SIZEOF(void *), si->dst_reg,
+ 				      si->src_reg, off);
+ 		break;
 	}
 
 	return insn - insn_buf;
@@ -6523,6 +6583,15 @@ const struct bpf_verifier_ops sk_skb_verifier_ops = {
 };
 
 const struct bpf_prog_ops sk_skb_prog_ops = {
+};
+
+const struct bpf_verifier_ops flow_dissector_verifier_ops = {
+ 	.get_func_proto		= flow_dissector_func_proto,
+ 	.is_valid_access	= flow_dissector_is_valid_access,
+ 	.convert_ctx_access	= bpf_convert_ctx_access,
+};
+ 
+const struct bpf_prog_ops flow_dissector_prog_ops = {
 };
 
 const struct bpf_verifier_ops sk_msg_verifier_ops = {
