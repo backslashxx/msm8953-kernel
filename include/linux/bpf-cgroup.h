@@ -1,6 +1,7 @@
 #ifndef _BPF_CGROUP_H
 #define _BPF_CGROUP_H
 
+#include <linux/bpf.h>
 #include <linux/errno.h>
 #include <linux/jump_label.h>
 #include <linux/percpu.h>
@@ -23,7 +24,9 @@ struct ctl_table_header;
 extern struct static_key_false cgroup_bpf_enabled_key;
 #define cgroup_bpf_enabled static_branch_unlikely(&cgroup_bpf_enabled_key)
 
-DECLARE_PER_CPU(void*, bpf_cgroup_storage);
+DECLARE_PER_CPU(void*, bpf_cgroup_storage[MAX_BPF_CGROUP_STORAGE_TYPE]);
+#define for_each_cgroup_storage_type(stype) \
+        for (stype = 0; stype < MAX_BPF_CGROUP_STORAGE_TYPE; stype++)
 
 struct bpf_cgroup_storage_map;
 
@@ -44,7 +47,7 @@ struct bpf_cgroup_storage {
 struct bpf_prog_list {
 	struct list_head node;
 	struct bpf_prog *prog;
-	struct bpf_cgroup_storage *storage;
+	struct bpf_cgroup_storage *storage[MAX_BPF_CGROUP_STORAGE_TYPE];
 };
 
 struct bpf_prog_array;
@@ -115,18 +118,26 @@ int __cgroup_bpf_run_filter_getsockopt(struct sock *sk, int level,
 				       int __user *optlen, int max_optlen,
 				       int retval);
 
-static inline void bpf_cgroup_storage_set(struct bpf_cgroup_storage *storage)
+static inline enum bpf_cgroup_storage_type cgroup_storage_type(
+ 	struct bpf_map *map)
 {
+	return BPF_CGROUP_STORAGE_SHARED;
+ }
+static inline void bpf_cgroup_storage_set(struct bpf_cgroup_storage
+ 					  *storage[MAX_BPF_CGROUP_STORAGE_TYPE])
+{
+ 	enum bpf_cgroup_storage_type stype;
 	struct bpf_storage_buffer *buf;
-
-	if (!storage)
-		return;
-
-	buf = READ_ONCE(storage->buf);
-	this_cpu_write(bpf_cgroup_storage, &buf->data[0]);
+	for_each_cgroup_storage_type(stype) {
+ 		if (!storage[stype])
+ 			continue;
+ 		buf = READ_ONCE(storage[stype]->buf);
+ 		this_cpu_write(bpf_cgroup_storage[stype], &buf->data[0]);
+ 	}
 }
 
-struct bpf_cgroup_storage *bpf_cgroup_storage_alloc(struct bpf_prog *prog);
+struct bpf_cgroup_storage *bpf_cgroup_storage_alloc(struct bpf_prog *prog,
+ 					enum bpf_cgroup_storage_type stype);
 void bpf_cgroup_storage_free(struct bpf_cgroup_storage *storage);
 void bpf_cgroup_storage_link(struct bpf_cgroup_storage *storage,
 			     struct cgroup *cgroup,
@@ -316,13 +327,14 @@ static inline int cgroup_bpf_prog_query(const union bpf_attr *attr,
 
 #define cgroup_bpf_enabled (0)
 
-static inline void bpf_cgroup_storage_set(struct bpf_cgroup_storage *storage) {}
+static inline void bpf_cgroup_storage_set(
+ 	struct bpf_cgroup_storage *storage[MAX_BPF_CGROUP_STORAGE_TYPE]) {}
 static inline int bpf_cgroup_storage_assign(struct bpf_prog *prog,
 					    struct bpf_map *map) { return 0; }
 static inline void bpf_cgroup_storage_release(struct bpf_prog *prog,
 					      struct bpf_map *map) {}
 static inline struct bpf_cgroup_storage *bpf_cgroup_storage_alloc(
-	struct bpf_prog *prog) { return 0; }
+	struct bpf_prog *prog, enum bpf_cgroup_storage_type stype) { return 0; }
 static inline void bpf_cgroup_storage_free(
 	struct bpf_cgroup_storage *storage) {}
 
@@ -346,6 +358,8 @@ static inline void bpf_cgroup_storage_free(
 				       optlen, max_optlen, retval) ({ retval; })
 #define BPF_CGROUP_RUN_PROG_SETSOCKOPT(sock, level, optname, optval, optlen, \
 				       kernel_optval) ({ 0; })
+
+#define for_each_cgroup_storage_type(stype) for (; false; )
 
 #endif /* CONFIG_CGROUP_BPF */
 
