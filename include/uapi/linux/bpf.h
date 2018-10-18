@@ -100,6 +100,7 @@ enum bpf_cmd {
 	BPF_PROG_QUERY,
 	BPF_BTF_LOAD = 18,
 	BPF_BTF_GET_FD_BY_ID,
+	BPF_MAP_LOOKUP_AND_DELETE_ELEM = 21,
 };
 
 enum bpf_map_type {
