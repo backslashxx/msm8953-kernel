@@ -121,6 +121,8 @@ enum bpf_map_type {
 	BPF_MAP_TYPE_SOCKMAP,
 	BPF_MAP_TYPE_SOCKHASH = 18,
 	BPF_MAP_TYPE_CGROUP_STORAGE,
+	BPF_MAP_TYPE_QUEUE = 22,
+	BPF_MAP_TYPE_STACK,
 	BPF_MAP_TYPE_DEVMAP_HASH = 25,
 };
 
@@ -395,6 +397,28 @@ union bpf_attr {
  *
  * int bpf_map_delete_elem(&map, &key)
  *     Return: 0 on success or negative error
+ *
+ * int bpf_map_push_elem(struct bpf_map *map, const void *value, u64 flags)
+ * 	Description
+ * 		Push an element *value* in *map*. *flags* is one of:
+ *
+ * 		**BPF_EXIST**
+ * 		If the queue/stack is full, the oldest element is removed to
+ * 		make room for this.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ *
+ * int bpf_map_pop_elem(struct bpf_map *map, void *value)
+ * 	Description
+ * 		Pop an element from *map*.
+ * Return
+ * 		0 on success, or a negative error in case of failure.
+ *
+ * int bpf_map_peek_elem(struct bpf_map *map, void *value)
+ * 	Description
+ * 		Get an element from *map* without removing it.
+ * Return
+ * 		0 on success, or a negative error in case of failure.
  *
  * int bpf_probe_read(void *dst, int size, void *src)
  *     Return: 0 on success or negative error
