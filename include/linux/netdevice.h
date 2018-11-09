@@ -827,7 +827,6 @@ enum bpf_netdev_command {
 	 */
 	XDP_QUERY_PROG,
 	/* BPF program for offload callbacks, invoked at program load time. */
-	BPF_OFFLOAD_VERIFIER_PREP,
 	BPF_OFFLOAD_TRANSLATE,
 	BPF_OFFLOAD_DESTROY,
 	BPF_OFFLOAD_MAP_ALLOC,
@@ -849,11 +848,6 @@ struct netdev_bpf {
 			u8 prog_attached;
 			u32 prog_id;
 		};
-		/* BPF_OFFLOAD_VERIFIER_PREP */
-		struct {
-			struct bpf_prog *prog;
-			const struct bpf_prog_offload_ops *ops; /* callee set */
-		} verifier;
 		/* BPF_OFFLOAD_TRANSLATE, BPF_OFFLOAD_DESTROY */
 		struct {
 			struct bpf_prog *prog;
