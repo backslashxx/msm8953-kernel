@@ -7552,7 +7552,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr,
 		env->strict_alignment = false;
 
 	if (bpf_prog_is_dev_bound(env->prog->aux)) {
-		ret = bpf_prog_offload_verifier_prep(env);
+		ret = bpf_prog_offload_verifier_prep(env->prog);
 		if (ret)
 			goto err_unlock;
 	}
