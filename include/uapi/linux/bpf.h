@@ -296,6 +296,9 @@ enum bpf_attach_type {
 /* Flag for stack_map, store build_id+offset instead of pointer */
 #define BPF_F_STACK_BUILD_ID	(1U << 5)
 
+/* Zero-initialize hash function seed. This should only be used for testing. */
+#define BPF_F_ZERO_SEED		(1U << 6)
+
 /* Flags for accessing BPF object from program side. */
 #define BPF_F_RDONLY_PROG	(1U << 7)
 
