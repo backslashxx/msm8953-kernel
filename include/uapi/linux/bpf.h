@@ -1200,6 +1200,12 @@ enum bpf_hdr_start_off {
 	BPF_HDR_START_NET,
 };
 
+#define __bpf_md_ptr(type, name)	\
+union {					\
+	type name;			\
+	__u64 :64;			\
+} __attribute__((aligned(8)))
+
 /* user accessible mirror of in-kernel sk_buff.
  * new fields can only be added to the end of this structure
  */
@@ -1335,8 +1341,8 @@ enum sk_action {
  * be added to the end of this structure
  */
 struct sk_msg_md {
-	void *data;
-	void *data_end;
+	__bpf_md_ptr(void *, data);
+	__bpf_md_ptr(void *, data_end);
 
 	__u32 family;
 	__u32 remote_ip4;	/* Stored in network byte order */
