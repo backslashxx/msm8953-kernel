@@ -427,20 +427,12 @@ union bpf_attr {
  * 	Return
  * 		0 on success, or a negative error in case of failure.
  *
- * int bpf_map_pop_elem(struct bpf_map *map, void *value)
+ * int bpf_probe_read(void *dst, u32 size, const void *src)
  * 	Description
- * 		Pop an element from *map*.
- * Return
+ * 		For tracing programs, safely attempt to read *size* bytes from
+ * 		address *src* and store the data in *dst*.
+ * 	Return
  * 		0 on success, or a negative error in case of failure.
- *
- * int bpf_map_peek_elem(struct bpf_map *map, void *value)
- * 	Description
- * 		Get an element from *map* without removing it.
- * Return
- * 		0 on success, or a negative error in case of failure.
- *
- * int bpf_probe_read(void *dst, int size, void *src)
- *     Return: 0 on success or negative error
  *
  * u64 bpf_ktime_get_ns(void)
  *     Return: current ktime
@@ -936,21 +928,21 @@ union bpf_attr {
  *		The *flags* meaning is specific for each map type,
  *		and has to be 0 for cgroup local storage.
  *
- *		Depending on the bpf program type, a local storage area
- *		can be shared between multiple instances of the bpf program,
+ *		Depending on the BPF program type, a local storage area
+ *		can be shared between multiple instances of the BPF program,
  *		running simultaneously.
  *
  *		A user should care about the synchronization by himself.
- *		For example, by using the BPF_STX_XADD instruction to alter
+ *		For example, by using the **BPF_STX_XADD** instruction to alter
  *		the shared data.
  *	Return
- *		Pointer to the local storage area.
+ *		A pointer to the local storage area.
  *
  * struct bpf_sock *bpf_sk_lookup_tcp(void *ctx, struct bpf_sock_tuple *tuple, u32 tuple_size, u64 netns, u64 flags)
  *	Description
  *		Look for TCP socket matching *tuple*, optionally in a child
  *		network namespace *netns*. The return value must be checked,
- *		and if non-NULL, released via **bpf_sk_release**\ ().
+ *		and if non-**NULL**, released via **bpf_sk_release**\ ().
  *
  *		The *ctx* should point to the context of the program, such as
  *		the skb or socket (depending on the hook in use). This is used
@@ -978,15 +970,15 @@ union bpf_attr {
  *		This helper is available only if the kernel was compiled with
  *		**CONFIG_NET** configuration option.
  *	Return
- *		Pointer to *struct bpf_sock*, or NULL in case of failure.
- *		For sockets with reuseport option, *struct bpf_sock*
- *		return is from reuse->socks[] using hash of the packet.
+ *		A pointer to *struct bpf_sock*, or **NULL** in case of failure.
+ *		For sockets with reuseport option, **struct bpf_sock**
+ *		return is from **reuse->socks**\ [] using hash of the packet.
  *
  * struct bpf_sock *bpf_sk_lookup_udp(void *ctx, struct bpf_sock_tuple *tuple, u32 tuple_size, u64 netns, u64 flags)
  *	Description
  *		Look for UDP socket matching *tuple*, optionally in a child
  *		network namespace *netns*. The return value must be checked,
- *		and if non-NULL, released via **bpf_sk_release**\ ().
+ *		and if non-**NULL**, released via **bpf_sk_release**\ ().
  *
  *		The *ctx* should point to the context of the program, such as
  *		the skb or socket (depending on the hook in use). This is used
@@ -1014,16 +1006,29 @@ union bpf_attr {
  *		This helper is available only if the kernel was compiled with
  *		**CONFIG_NET** configuration option.
  *	Return
- *		Pointer to *struct bpf_sock*, or NULL in case of failure.
- *		For sockets with reuseport option, *struct bpf_sock*
- *		return is from reuse->socks[] using hash of the packet.
+ *		A pointer to **struct bpf_sock**, or **NULL** in case of
+ *		failure. For sockets with reuseport option, **struct bpf_sock**
+ *		return is from **reuse->socks**\ [] using hash of the packet.
  *
- * int bpf_sk_release(struct bpf_sock *sk)
+ * int bpf_sk_release(struct bpf_sock *sock)
  *	Description
- *		Release the reference held by *sock*. *sock* must be a non-NULL
- *		pointer that was returned from bpf_sk_lookup_xxx\ ().
+ *		Release the reference held by *sock*. *sock* must be a
+ *		non-**NULL** pointer that was returned from
+ *		**bpf_sk_lookup_xxx**\ ().
  *	Return
  *		0 on success, or a negative error in case of failure.
+ *
+ * int bpf_map_pop_elem(struct bpf_map *map, void *value)
+ * 	Description
+ * 		Pop an element from *map*.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ *
+ * int bpf_map_peek_elem(struct bpf_map *map, void *value)
+ * 	Description
+ * 		Get an element from *map* without removing it.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
