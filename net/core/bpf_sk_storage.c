@@ -672,6 +672,7 @@ static int notsupp_get_next_key(struct bpf_map *map, void *key,
 }
 
 static int bpf_sk_storage_map_check_btf(const struct bpf_map *map,
+					const struct btf *btf,
 					const struct btf_type *key_type,
 					const struct btf_type *value_type)
 {
