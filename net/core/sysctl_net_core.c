@@ -265,7 +265,10 @@ proc_dointvec_minmax_bpf_restricted(struct ctl_table *table, int write,
 
 	return proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 }
+<<<<<<< HEAD
 # endif /* CONFIG_HAVE_EBPF_JIT */
+=======
+>>>>>>> 8edc07a0f1f3 (bpf: fix bpf_jit_limit knob for PAGE_SIZE >= 64K)
 
 static int
 proc_dolongvec_minmax_bpf_restricted(struct ctl_table *table, int write,
@@ -364,6 +367,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "bpf_jit_limit",
 		.data		= &bpf_jit_limit,
 <<<<<<< HEAD
+<<<<<<< HEAD
 		.maxlen		= sizeof(long),
 		.mode		= 0600,
 		.proc_handler	= proc_dolongvec_minmax_bpf_restricted,
@@ -375,6 +379,13 @@ static struct ctl_table net_core_table[] = {
 		.proc_handler	= proc_dointvec_minmax_bpf_restricted,
 		.extra1		= &one,
 >>>>>>> 68cd5fb6b0e7 (bpf: add bpf_jit_limit knob to restrict unpriv allocations)
+=======
+		.maxlen		= sizeof(long),
+		.mode		= 0600,
+		.proc_handler	= proc_dolongvec_minmax_bpf_restricted,
+		.extra1		= &long_one,
+		.extra2		= &long_max,
+>>>>>>> 8edc07a0f1f3 (bpf: fix bpf_jit_limit knob for PAGE_SIZE >= 64K)
 	},
 #endif
 	{
