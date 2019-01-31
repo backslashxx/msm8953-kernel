@@ -117,6 +117,8 @@ static inline void copy_map_value(struct bpf_map *map, void *dst, void *src)
 		memcpy(dst, src, map->value_size);
 	}
 }
+void copy_map_value_locked(struct bpf_map *map, void *dst, void *src,
+			   bool lock_src);
 
 struct bpf_offloaded_map;
 
