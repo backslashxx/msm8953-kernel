@@ -46,6 +46,7 @@ void btf_type_seq_show(const struct btf *btf, u32 type_id, void *obj,
 		       struct seq_file *m);
 int btf_get_fd_by_id(u32 id);
 u32 btf_id(const struct btf *btf);
+int btf_find_spin_lock(const struct btf *btf, const struct btf_type *t);
 
 #ifdef CONFIG_BPF_SYSCALL
 const struct btf_type *btf_type_by_id(const struct btf *btf, u32 type_id);
