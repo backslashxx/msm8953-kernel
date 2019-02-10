@@ -1041,6 +1041,14 @@ union bpf_attr {
  * 		Get an element from *map* without removing it.
  * 	Return
  * 		0 on success, or a negative error in case of failure.
+ *
+ * struct bpf_sock *bpf_sk_fullsock(struct bpf_sock *sk)
+ *	Description
+ *		This helper gets a **struct bpf_sock** pointer such
+ *		that all the fields in bpf_sock can be accessed.
+ *	Return
+ *		A **struct bpf_sock** pointer on success, or NULL in
+ *		case of failure.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -1272,6 +1280,7 @@ struct __sk_buff {
 
 	__u32 data_meta;
 	__u32 wire_len;
+	__bpf_md_ptr(struct bpf_sock *, sk);
 };
 
 struct bpf_tunnel_key {
