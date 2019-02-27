@@ -154,6 +154,7 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_CGROUP_DEVICE,
 	BPF_PROG_TYPE_SK_MSG,
 	BPF_PROG_TYPE_CGROUP_SOCK_ADDR = 18,
+	BPF_PROG_TYPE_CGROUP_SYSCTL = 23,
 };
 
 enum bpf_attach_type {
@@ -173,7 +174,8 @@ enum bpf_attach_type {
 	BPF_CGROUP_INET6_POST_BIND,
 	BPF_CGROUP_UDP4_SENDMSG,
 	BPF_CGROUP_UDP6_SENDMSG,
-	BPF_CGROUP_UDP4_RECVMSG = 19,
+	BPF_CGROUP_SYSCTL = 18,
+	BPF_CGROUP_UDP4_RECVMSG,
 	BPF_CGROUP_UDP6_RECVMSG,
 	__MAX_BPF_ATTACH_TYPE
 };
@@ -1705,4 +1707,11 @@ struct bpf_line_info {
 struct bpf_spin_lock {
 	__u32	val;
 };
+
+struct bpf_sysctl {
+	__u32	write;		/* Sysctl is being read (= 0) or written (= 1).
+				 * Allows 1,2,4-byte read, but no write.
+				 */
+};
+
 #endif /* _UAPI__LINUX_BPF_H__ */
