@@ -29,6 +29,8 @@ struct sk_buff;
 struct sock;
 struct seccomp_data;
 struct bpf_prog_aux;
+struct ctl_table;
+struct ctl_table_header;
 
 /* ArgX, context and stack frame pointer register positions. Note,
  * Arg1, Arg2, Arg3, etc are used as argument mappings of function
@@ -1194,6 +1196,12 @@ struct bpf_sock_ops_kern {
 					 * sock_ops_convert_ctx_access
 					 * as temporary storage of a register.
 					 */
+};
+
+struct bpf_sysctl_kern {
+	struct ctl_table_header *head;
+	struct ctl_table *table;
+	int write;
 };
 
 #endif /* __LINUX_FILTER_H__ */
