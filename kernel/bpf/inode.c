@@ -526,9 +526,8 @@ struct bpf_prog *bpf_prog_get_type_path(const char *name, enum bpf_prog_type typ
 }
 EXPORT_SYMBOL(bpf_prog_get_type_path);
 
-static void bpf_destroy_inode_deferred(struct rcu_head *head)
+static void bpf_free_inode(struct inode *inode)
 {
-	struct inode *inode = container_of(head, struct inode, i_rcu);
 	enum bpf_type type;
 
 	if (S_ISLNK(inode->i_mode))
@@ -538,15 +537,10 @@ static void bpf_destroy_inode_deferred(struct rcu_head *head)
 	free_inode_nonrcu(inode);
 }
 
-static void bpf_destroy_inode(struct inode *inode)
-{
-	call_rcu(&inode->i_rcu, bpf_destroy_inode_deferred);
-}
-
 static const struct super_operations bpf_super_ops = {
 	.statfs		= simple_statfs,
 	.drop_inode	= generic_delete_inode,
-	.destroy_inode	= bpf_destroy_inode,
+	.free_inode	= bpf_free_inode,
 };
 
 static int bpf_fill_super(struct super_block *sb, void *data, int silent)
