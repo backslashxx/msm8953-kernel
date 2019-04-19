@@ -5348,10 +5348,6 @@ enum {
 
 #define STATE_LIST_MARK ((struct bpf_verifier_state_list *) -1L)
 
-static int *insn_stack;	/* stack of insns to process */
-static int cur_stack;	/* current stack index */
-static int *insn_state;
-
 /* t, w, e - match pseudo-code above:
  * t - index of current instruction
  * w - next instruction
@@ -5359,6 +5355,9 @@ static int *insn_state;
  */
 static int push_insn(int t, int w, int e, struct bpf_verifier_env *env)
 {
+	int *insn_stack = env->cfg.insn_stack;
+	int *insn_state = env->cfg.insn_state;
+
 	if (e == FALLTHROUGH && insn_state[t] >= (DISCOVERED | FALLTHROUGH))
 		return 0;
 
@@ -5379,9 +5378,9 @@ static int push_insn(int t, int w, int e, struct bpf_verifier_env *env)
 		/* tree-edge */
 		insn_state[t] = DISCOVERED | e;
 		insn_state[w] = DISCOVERED;
-		if (cur_stack >= env->prog->len)
+		if (env->cfg.cur_stack >= env->prog->len)
 			return -E2BIG;
-		insn_stack[cur_stack++] = w;
+		insn_stack[env->cfg.cur_stack++] = w;
 		return 1;
 	} else if ((insn_state[w] & 0xF0) == DISCOVERED) {
 		verbose_linfo(env, t, "%d: ", t);
@@ -5405,14 +5404,15 @@ static int check_cfg(struct bpf_verifier_env *env)
 {
 	struct bpf_insn *insns = env->prog->insnsi;
 	int insn_cnt = env->prog->len;
+	int *insn_stack, *insn_state;
 	int ret = 0;
 	int i, t;
 
-	insn_state = kcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
+	insn_state = env->cfg.insn_state = kcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
 	if (!insn_state)
 		return -ENOMEM;
 
-	insn_stack = kcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
+	insn_stack = env->cfg.insn_stack = kcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
 	if (!insn_stack) {
 		kfree(insn_state);
 		return -ENOMEM;
@@ -5420,12 +5420,12 @@ static int check_cfg(struct bpf_verifier_env *env)
 
 	insn_state[0] = DISCOVERED; /* mark 1st insn as discovered */
 	insn_stack[0] = 0; /* 0 is the first instruction */
-	cur_stack = 1;
+	env->cfg.cur_stack = 1;
 
 peek_stack:
-	if (cur_stack == 0)
+	if (env->cfg.cur_stack == 0)
 		goto check_state;
-	t = insn_stack[cur_stack - 1];
+	t = insn_stack[env->cfg.cur_stack - 1];
 
 	if (BPF_CLASS(insns[t].code) == BPF_JMP ||
 	    BPF_CLASS(insns[t].code) == BPF_JMP32) {
@@ -5494,7 +5494,7 @@ peek_stack:
 
 mark_explored:
 	insn_state[t] = EXPLORED;
-	if (cur_stack-- <= 0) {
+	if (env->cfg.cur_stack-- <= 0) {
 		verbose(env, "pop stack internal bug\n");
 		ret = -EFAULT;
 		goto err_free;
@@ -5514,6 +5514,7 @@ check_state:
 err_free:
 	kfree(insn_state);
 	kfree(insn_stack);
+	env->cfg.insn_state = env->cfg.insn_stack = NULL;
 	return ret;
 }
 
