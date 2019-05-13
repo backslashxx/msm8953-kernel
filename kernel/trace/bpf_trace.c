@@ -1262,7 +1262,8 @@ int bpf_probe_unregister(struct bpf_raw_event_map *btp, struct bpf_prog *prog)
 }
 
 #ifdef CONFIG_MODULES
-int bpf_event_notify(struct notifier_block *nb, unsigned long op, void *module)
+static int bpf_event_notify(struct notifier_block *nb, unsigned long op,
+			    void *module)
 {
 	struct bpf_trace_module *btm, *tmp;
 	struct module *mod = module;
@@ -1301,7 +1302,7 @@ static struct notifier_block bpf_module_nb = {
 	.notifier_call = bpf_event_notify,
 };
 
-int __init bpf_event_init(void)
+static int __init bpf_event_init(void)
 {
 	register_module_notifier(&bpf_module_nb);
 	return 0;
