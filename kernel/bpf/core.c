@@ -1862,10 +1862,9 @@ struct bpf_prog_array __rcu *bpf_prog_array_alloc(u32 prog_cnt, gfp_t flags)
 	return &empty_prog_array.hdr;
 }
 
-void bpf_prog_array_free(struct bpf_prog_array __rcu *progs)
+void bpf_prog_array_free(struct bpf_prog_array *progs)
 {
-	if (!progs ||
-	    progs == (struct bpf_prog_array __rcu *)&empty_prog_array.hdr)
+	if (!progs || progs == &empty_prog_array.hdr)
 		return;
 	kfree_rcu(progs, rcu);
 }
@@ -1880,7 +1879,7 @@ bool bpf_prog_array_is_empty(struct bpf_prog_array *array)
 	return true;
 }
 
-int bpf_prog_array_copy_info(struct bpf_prog_array __rcu *array,
+int bpf_prog_array_copy_info(struct bpf_prog_array *array,
  			__u32 __user *prog_ids, u32 request_cnt,
  			__u32 __user *prog_cnt)
 {
@@ -1899,19 +1898,19 @@ int bpf_prog_array_copy_info(struct bpf_prog_array __rcu *array,
  	return bpf_prog_array_copy_to_user(array, prog_ids, request_cnt);
 }
 
-void bpf_prog_array_delete_safe(struct bpf_prog_array __rcu *array,
+void bpf_prog_array_delete_safe(struct bpf_prog_array *array,
 				struct bpf_prog *old_prog)
 {
-	struct bpf_prog_array_item *item = array->items;
+	struct bpf_prog_array_item *item;
 
-	for (; item->prog; item++)
+	for (item = array->items; item->prog; item++)
 		if (item->prog == old_prog) {
 			WRITE_ONCE(item->prog, &dummy_bpf_prog.prog);
 			break;
 		}
 }
 
-int bpf_prog_array_copy(struct bpf_prog_array __rcu *old_array,
+int bpf_prog_array_copy(struct bpf_prog_array *old_array,
 			struct bpf_prog *exclude_prog,
 			struct bpf_prog *include_prog,
 			struct bpf_prog_array **new_array)
@@ -1968,34 +1967,29 @@ int bpf_prog_array_copy(struct bpf_prog_array __rcu *old_array,
 	return 0;
 }
 
-int bpf_prog_array_length(struct bpf_prog_array __rcu *array)
+int bpf_prog_array_length(struct bpf_prog_array *array)
 {
 	struct bpf_prog_array_item *item;
 	u32 cnt = 0;
 
-	rcu_read_lock();
-	item = rcu_dereference(array)->items;
-	for (; item->prog; item++)
+	for (item = array->items; item->prog; item++)
 		if (item->prog != &dummy_bpf_prog.prog)
 			cnt++;
-	rcu_read_unlock();
 	return cnt;
 }
 
-int bpf_prog_array_copy_to_user(struct bpf_prog_array __rcu *array,
+int bpf_prog_array_copy_to_user(struct bpf_prog_array *array,
 				__u32 __user *prog_ids, u32 cnt)
 {
 	struct bpf_prog_array_item *item;
 	u32 i = 0, id;
 
-	rcu_read_lock();
 	item = rcu_dereference(array)->items;
 	for (; item->prog; item++) {
 		if (item->prog != &dummy_bpf_prog.prog)
  			continue;
 		id = item->prog->aux->id;
 		if (copy_to_user(prog_ids + i, &id, sizeof(id))) {
-			rcu_read_unlock();
 			return -EFAULT;
 		}
 		if (++i == cnt) {
@@ -2003,7 +1997,6 @@ int bpf_prog_array_copy_to_user(struct bpf_prog_array __rcu *array,
 			break;
 		}
 	}
-	rcu_read_unlock();
 	if (item->prog)
 		return -ENOSPC;
 	return 0;
