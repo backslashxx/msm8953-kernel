@@ -186,6 +186,4 @@ struct fscrypt_mode {
 	bool needs_essiv;
 };
 
-extern void __exit fscrypt_essiv_cleanup(void);
-
 #endif /* _FSCRYPT_PRIVATE_H */
