@@ -603,8 +603,12 @@ void bpf_warn_invalid_xdp_action(u32 act);
 #ifdef CONFIG_BPF_JIT
 extern int bpf_jit_enable;
 extern int bpf_jit_harden;
+<<<<<<< HEAD
 extern long bpf_jit_limit;
 extern long bpf_jit_limit_max;
+=======
+extern int bpf_jit_limit;
+>>>>>>> 68cd5fb6b0e7 (bpf: add bpf_jit_limit knob to restrict unpriv allocations)
 
 typedef void (*bpf_jit_fill_hole_t)(void *area, unsigned int size);
 
