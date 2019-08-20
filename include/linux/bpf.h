@@ -30,6 +30,9 @@ struct btf;
 struct btf_type;
 struct poll_table_struct;
 
+extern struct idr btf_idr;
+extern spinlock_t btf_idr_lock;
+
 /* map is generic key/value storage optionally accesible by eBPF programs */
 struct bpf_map_ops {
 	/* funcs callable from userspace (via syscall) */
