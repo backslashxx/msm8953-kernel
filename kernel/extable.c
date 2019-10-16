@@ -56,6 +56,8 @@ const struct exception_table_entry *search_exception_tables(unsigned long addr)
 	e = search_extable(__start___ex_table, __stop___ex_table-1, addr);
 	if (!e)
 		e = search_module_extables(addr);
+	if (!e)
+		e = search_bpf_extables(addr);
 	return e;
 }
 
