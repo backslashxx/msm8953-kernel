@@ -21,6 +21,7 @@
 #include <linux/u64_stats_sync.h>
 
 struct bpf_verifier_env;
+struct bpf_verifier_log;
 struct perf_event;
 struct bpf_prog;
 struct bpf_map;
@@ -290,6 +291,7 @@ enum bpf_reg_type {
 	PTR_TO_SOCK_COMMON_OR_NULL, /* reg points to sock_common or NULL */
 	PTR_TO_TCP_SOCK,	 /* reg points to struct tcp_sock */
 	PTR_TO_TCP_SOCK_OR_NULL, /* reg points to struct tcp_sock or NULL */
+	PTR_TO_BTF_ID,		 /* reg points to kernel struct */
 	PTR_TO_MEM,		 /* reg points to valid memory region */
 	PTR_TO_MEM_OR_NULL,	 /* reg points to valid memory region or NULL */
 	PTR_TO_TP_BUFFER,	 /* reg points to a writable raw tp's buffer */
@@ -300,7 +302,11 @@ enum bpf_reg_type {
  */
 struct bpf_insn_access_aux {
 	enum bpf_reg_type reg_type;
-	int ctx_field_size;
+	union {
+		int ctx_field_size;
+		u32 btf_id;
+	};
+	struct bpf_verifier_log *log; /* for verbose logs */
 };
 
 static inline void
@@ -467,6 +473,7 @@ u64 bpf_get_stackid(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5);
 
 bool bpf_prog_array_compatible(struct bpf_array *array, const struct bpf_prog *fp);
 int bpf_prog_calc_tag(struct bpf_prog *fp);
+const char *kernel_type_name(u32 btf_type_id);
 
 const struct bpf_func_proto *bpf_get_trace_printk_proto(void);
 
@@ -488,6 +495,13 @@ int bpf_prog_test_run_skb(struct bpf_prog *prog, const union bpf_attr *kattr,
 int bpf_prog_test_run_flow_dissector(struct bpf_prog *prog,
 				     const union bpf_attr *kattr,
 				     union bpf_attr __user *uattr);
+bool btf_ctx_access(int off, int size, enum bpf_access_type type,
+		    const struct bpf_prog *prog,
+		    struct bpf_insn_access_aux *info);
+int btf_struct_access(struct bpf_verifier_log *log,
+		      const struct btf_type *t, int off, int size,
+		      enum bpf_access_type atype,
+		      u32 *next_btf_id);
 
 /* an array of programs to be executed under rcu_lock.
  *

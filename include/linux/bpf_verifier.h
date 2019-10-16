@@ -55,6 +55,8 @@ struct bpf_reg_state {
 		 */
 		struct bpf_map *map_ptr;
 
+		u32 btf_id; /* for PTR_TO_BTF_ID */
+
 		u32 mem_size; /* for PTR_TO_MEM | PTR_TO_MEM_OR_NULL */
 
 		/* Max size from any of the above. */
@@ -416,6 +418,8 @@ void bpf_verifier_vlog(struct bpf_verifier_log *log, const char *fmt,
 		       va_list args);
 __printf(2, 3) void bpf_verifier_log_write(struct bpf_verifier_env *env,
 					   const char *fmt, ...);
+__printf(2, 3) void bpf_log(struct bpf_verifier_log *log,
+			    const char *fmt, ...);
 
 static inline struct bpf_func_state *cur_func(struct bpf_verifier_env *env)
 {
