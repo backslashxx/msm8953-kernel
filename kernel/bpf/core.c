@@ -417,7 +417,7 @@ struct bpf_prog *bpf_patch_insn_single(struct bpf_prog *prog, u32 off,
 	return prog_adj;
 }
 
-void bpf_prog_kallsyms_del_subprogs(struct bpf_prog *fp)
+static void bpf_prog_kallsyms_del_subprogs(struct bpf_prog *fp)
 {
 	int i;
 
