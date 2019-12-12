@@ -1758,9 +1758,18 @@ static inline void tcp_unlink_write_queue(struct sk_buff *skb, struct sock *sk)
 	__skb_unlink(skb, &sk->sk_write_queue);
 }
 
+/**
+ * tcp_write_queue_empty - test if any payload (or FIN) is available in write queue
+ * @sk: socket
+ *
+ * Since the write queue can have a temporary empty skb in it,
+ * we must not use "return skb_queue_empty(&sk->sk_write_queue)"
+ */
 static inline bool tcp_write_queue_empty(struct sock *sk)
 {
-	return skb_queue_empty(&sk->sk_write_queue);
+	struct tcp_sock *tp = tcp_sk(sk);
+
+	return tp->write_seq == tp->snd_nxt;
 }
 
 static inline void tcp_push_pending_frames(struct sock *sk)

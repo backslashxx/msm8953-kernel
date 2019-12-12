@@ -3000,7 +3000,7 @@ void sk_forced_mem_schedule(struct sock *sk, int size)
  */
 void tcp_send_fin(struct sock *sk)
 {
-	struct sk_buff *skb, *tskb = tcp_write_queue_tail(sk);
+	struct sk_buff *skb, *tskb, *tail = tcp_write_queue_tail(sk);
 	struct tcp_sock *tp = tcp_sk(sk);
 
 	/* Optimization, tack on the FIN if we have one skb in write queue and
@@ -3008,12 +3008,13 @@ void tcp_send_fin(struct sock *sk)
 	 * Note: in the latter case, FIN packet will be sent after a timeout,
 	 * as TCP stack thinks it has already been transmitted.
 	 */
+	tskb = tail;
 	if (tskb && (tcp_send_head(sk) || tcp_under_memory_pressure(sk))) {
 coalesce:
 		TCP_SKB_CB(tskb)->tcp_flags |= TCPHDR_FIN;
 		TCP_SKB_CB(tskb)->end_seq++;
 		tp->write_seq++;
-		if (!tcp_send_head(sk)) {
+		if (!tail) {
 			/* This means tskb was already sent.
 			 * Pretend we included the FIN on previous transmit.
 			 * We need to set tp->snd_nxt to the value it would have
