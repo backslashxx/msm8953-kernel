@@ -6734,12 +6734,13 @@ subsys_initcall(cgroup_namespaces_init);
 
 #ifdef CONFIG_CGROUP_BPF
 int cgroup_bpf_attach(struct cgroup *cgrp, struct bpf_prog *prog,
-		      enum bpf_attach_type type, u32 flags)
+		      struct bpf_prog *replace_prog, enum bpf_attach_type type,
+		      u32 flags)
 {
 	int ret;
 
 	mutex_lock(&cgroup_mutex);
-	ret = __cgroup_bpf_attach(cgrp, prog, type, flags);
+	ret = __cgroup_bpf_attach(cgrp, prog, replace_prog, type, flags);
 	mutex_unlock(&cgroup_mutex);
 	return ret;
 }

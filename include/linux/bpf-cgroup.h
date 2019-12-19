@@ -75,6 +75,7 @@ void cgroup_bpf_put(struct cgroup *cgrp);
 int cgroup_bpf_inherit(struct cgroup *cgrp);
 
 int __cgroup_bpf_attach(struct cgroup *cgrp, struct bpf_prog *prog,
+			struct bpf_prog *replace_prog,
 			enum bpf_attach_type type, u32 flags);
 int __cgroup_bpf_detach(struct cgroup *cgrp, struct bpf_prog *prog,
 			enum bpf_attach_type type);
@@ -83,7 +84,8 @@ int __cgroup_bpf_query(struct cgroup *cgrp, const union bpf_attr *attr,
 
 /* Wrapper for __cgroup_bpf_*() protected by cgroup_mutex */
 int cgroup_bpf_attach(struct cgroup *cgrp, struct bpf_prog *prog,
-		      enum bpf_attach_type type, u32 flags);
+		      struct bpf_prog *replace_prog, enum bpf_attach_type type,
+		      u32 flags);
 int cgroup_bpf_detach(struct cgroup *cgrp, struct bpf_prog *prog,
 		      enum bpf_attach_type type, u32 flags);
 int cgroup_bpf_query(struct cgroup *cgrp, const union bpf_attr *attr,
