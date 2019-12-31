@@ -191,13 +191,12 @@ bool fsverity_verify_page(struct page *page)
 	struct ahash_request *req;
 	bool valid;
 
-	req = ahash_request_alloc(vi->tree_params.hash_alg->tfm, GFP_NOFS);
-	if (unlikely(!req))
-		return false;
+	/* This allocation never fails, since it's mempool-backed. */
+	req = fsverity_alloc_hash_request(vi->tree_params.hash_alg, GFP_NOFS);
 
 	valid = verify_page(inode, vi, req, page);
 
-	ahash_request_free(req);
+	fsverity_free_hash_request(vi->tree_params.hash_alg, req);
 
 	return valid;
 }
@@ -222,16 +221,13 @@ void fsverity_verify_bio(struct bio *bio)
 {
 	struct inode *inode = bio->bi_io_vec->bv_page->mapping->host;
 	const struct fsverity_info *vi = inode->i_verity_info;
+	const struct merkle_tree_params *params = &vi->tree_params;
 	struct ahash_request *req;
 	struct bio_vec *bv;
 	int i;
 
-	req = ahash_request_alloc(vi->tree_params.hash_alg->tfm, GFP_NOFS);
-	if (unlikely(!req)) {
-		bio_for_each_segment_all(bv, bio, i)
-			SetPageError(bv->bv_page);
-		return;
-	}
+	/* This allocation never fails, since it's mempool-backed. */
+	req = fsverity_alloc_hash_request(params->hash_alg, GFP_NOFS);
 
 	bio_for_each_segment_all(bv, bio, i) {
 		struct page *page = bv->bv_page;
@@ -240,7 +236,7 @@ void fsverity_verify_bio(struct bio *bio)
 			SetPageError(page);
 	}
 
-	ahash_request_free(req);
+	fsverity_free_hash_request(params->hash_alg, req);
 }
 EXPORT_SYMBOL_GPL(fsverity_verify_bio);
 #endif /* CONFIG_BLOCK */
