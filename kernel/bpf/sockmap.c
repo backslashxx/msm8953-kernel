@@ -1825,10 +1825,11 @@ static int sock_map_delete_elem(struct bpf_map *map, void *key)
 	psock = smap_psock_sk(sock);
 	if (!psock)
 	
-		goto out;
+		return 0;
 
 	if (psock->bpf_parse) {
 		smap_stop_sock(psock, sock);
+	}
 	smap_list_map_remove(psock, &stab->sock_map[k]);
 	smap_release_sock(psock, sock);
 	return 0;
@@ -2096,7 +2097,7 @@ int sockmap_get_from_fd(const union bpf_attr *attr, int type,
 
 static void *sock_map_lookup(struct bpf_map *map, void *key)
 {
-	return ERR_PTR(-EOPNOTSUPP);
+	return __sock_map_lookup_elem(map, *(u32 *)key);
 }
 
 static int sock_map_update_elem(struct bpf_map *map,
@@ -2555,6 +2556,11 @@ struct sock  *__sock_hash_lookup_elem(struct bpf_map *map, void *key)
 	return sk;
 }
 
+static void *sock_hash_lookup(struct bpf_map *map, void *key)
+{
+	return __sock_hash_lookup_elem(map, key);
+}
+
 const struct bpf_map_ops sock_map_ops = {
 	.map_alloc = sock_map_alloc,
 	.map_free = sock_map_free,
@@ -2569,7 +2575,7 @@ const struct bpf_map_ops sock_map_ops = {
 const struct bpf_map_ops sock_hash_ops = {
 	.map_alloc = sock_hash_alloc,
 	.map_free = sock_hash_free,
-	.map_lookup_elem = sock_map_lookup,
+	.map_lookup_elem = sock_hash_lookup,
 	.map_get_next_key = sock_hash_get_next_key,
 	.map_update_elem = sock_hash_update_elem,
 	.map_delete_elem = sock_hash_delete_elem,
