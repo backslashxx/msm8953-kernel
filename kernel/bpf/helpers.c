@@ -346,6 +346,24 @@ const struct bpf_func_proto bpf_get_current_cgroup_id_proto = {
 	.ret_type	= RET_INTEGER,
 };
 
+BPF_CALL_1(bpf_get_current_ancestor_cgroup_id, int, ancestor_level)
+{
+	struct cgroup *cgrp = task_dfl_cgroup(current);
+	struct cgroup *ancestor;
+
+	ancestor = cgroup_ancestor(cgrp, ancestor_level);
+	if (!ancestor)
+		return 0;
+	return ancestor->id;
+}
+
+const struct bpf_func_proto bpf_get_current_ancestor_cgroup_id_proto = {
+	.func		= bpf_get_current_ancestor_cgroup_id,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
+};
+
 DECLARE_PER_CPU(void*, bpf_cgroup_storage);
 
 BPF_CALL_2(bpf_get_local_storage, struct bpf_map *, map, u64, flags)
