@@ -601,7 +601,8 @@ static inline int bpf_map_attr_numa_node(const union bpf_attr *attr)
 		attr->numa_node : NUMA_NO_NODE;
 }
 
-#else
+const struct bpf_func_proto *bpf_base_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog);
+#else /* !CONFIG_BPF_SYSCALL */
 static inline struct bpf_prog *bpf_prog_get(u32 ufd)
 {
 	return ERR_PTR(-EOPNOTSUPP);
@@ -677,6 +678,12 @@ static inline void __dev_map_insert_ctx(struct bpf_map *map, u32 index)
 
 static inline void __dev_map_flush(struct bpf_map *map)
 {
+}
+
+static inline const struct bpf_func_proto *
+bpf_base_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
+{
+	return NULL;
 }
 #endif /* CONFIG_BPF_SYSCALL */
 
@@ -813,6 +820,7 @@ extern const struct bpf_func_proto bpf_event_output_data_proto;
 /* Shared helpers among cBPF and eBPF. */
 void bpf_user_rnd_init_once(void);
 u64 bpf_user_rnd_u32(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5);
+u64 bpf_get_raw_cpu_id(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5);
 
 #if defined(CONFIG_NET)
 bool bpf_sock_common_is_valid_access(int off, int size,
