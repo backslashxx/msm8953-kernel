@@ -88,7 +88,7 @@ static struct hlist_head *dev_map_create_hash(unsigned int entries)
 	int i;
 	struct hlist_head *hash;
 
-	hash = kmalloc_array(entries, sizeof(*hash), GFP_KERNEL);
+	hash = bpf_map_area_alloc((u64) entries * sizeof(*hash), numa_node);
 	if (hash != NULL)
 		for (i = 0; i < entries; i++)
 			INIT_HLIST_HEAD(&hash[i]);
@@ -170,6 +170,12 @@ static struct bpf_map *dev_map_alloc(union bpf_attr *attr)
 			goto free_map_area;
 
 		spin_lock_init(&dtab->index_lock);
+	} else {
+		dtab->netdev_map = bpf_map_area_alloc((u64) dtab->map.max_entries *
+						      sizeof(struct bpf_dtab_netdev *),
+						      dtab->map.numa_node);
+		if (!dtab->netdev_map)
+			goto free_dtab;
 	}
 
 	spin_lock(&dev_map_lock);
