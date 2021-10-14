@@ -249,30 +249,6 @@ static int __init bpf_jit_charge_init(void)
 					    PAGE_SIZE), LONG_MAX);
 	return 0;
 }
-	pure_initcall(bpf_jit_charge_init);
-
-static atomic_long_t bpf_jit_current;
-
-/* Can be overridden by an arch's JIT compiler if it has a custom,
- * dedicated BPF backend memory area, or if neither of the two
- * below apply.
- */
-u64 __weak bpf_jit_alloc_exec_limit(void)
-{
-#if defined(MODULES_VADDR)
-	return MODULES_END - MODULES_VADDR;
-#else
-	return VMALLOC_END - VMALLOC_START;
-#endif
-}
-
-static int __init bpf_jit_charge_init(void)
-{
-	/* Only used as heuristic here to derive limit. */
-	bpf_jit_limit = min_t(u64, round_up(bpf_jit_alloc_exec_limit() >> 2,
-					    PAGE_SIZE), LONG_MAX);
-	return 0;
-}
 pure_initcall(bpf_jit_charge_init);
 
 static int bpf_jit_charge_modmem(u32 pages)
@@ -333,7 +309,7 @@ bpf_jit_binary_alloc(unsigned int proglen, u8 **image_ptr,
 void bpf_jit_binary_free(struct bpf_binary_header *hdr)
 {
 	u32 pages = hdr->pages;
-	
+
 	module_memfree(hdr);
 	bpf_jit_uncharge_modmem(pages);
 }
