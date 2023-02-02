@@ -529,7 +529,7 @@ int __bpf_prog_charge(struct user_struct *user, u32 pages);
 void __bpf_prog_uncharge(struct user_struct *user, u32 pages);
 
 void bpf_prog_free_id(struct bpf_prog *prog, bool do_idr_lock);
-void bpf_map_free_id(struct bpf_map *map, bool do_idr_lock);
+void bpf_map_free_id(struct bpf_map *map);
 
 struct bpf_map *bpf_map_get_with_uref(u32 ufd);
 struct bpf_map *__bpf_map_get(struct fd f);
