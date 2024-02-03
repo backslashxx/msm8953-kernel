@@ -758,6 +758,23 @@ else
 KBUILD_CFLAGS   += -O2
 endif
 
+# Tell compiler to tune the performance of the code for a specified
+# target processor
+ifeq ($(cc-name),gcc)
+KBUILD_CFLAGS += -mcpu=cortex-a53+crc+crypto -mtune=cortex-a53 -funswitch-loops -funroll-loops -fpeel-loops -fsplit-loops -Wno-error
+KBUILD_AFLAGS += -mcpu=cortex-a53+crc+crypto -mtune=cortex-a53 -funswitch-loops -funroll-loops -fpeel-loops -fsplit-loops -Wno-error
+else ifeq ($(cc-name),clang)
+KBUILD_CFLAGS += -mcpu=cortex-a53+crc+crypto -mtune=cortex-a53 -funroll-loops
+KBUILD_AFLAGS += -mcpu=cortex-a53+crc+crypto -mtune=cortex-a53 -funroll-loops
+endif
+
+# Initialize all stack variables with a zero value.
+# Future support for zero initialization is still being debated, see
+# https://bugs.llvm.org/show_bug.cgi?id=45497. These flags are subject to being
+# renamed or dropped.
+KBUILD_CFLAGS  += -ftrivial-auto-var-init=zero
+KBUILD_CFLAGS  += $(call cc-option, -enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang)
+
 ifdef CONFIG_CC_WERROR
 KBUILD_CFLAGS	+= -Werror
 endif
