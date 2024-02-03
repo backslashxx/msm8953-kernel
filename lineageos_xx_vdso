@@ -1,0 +1,3 @@
+# vdso
+CONFIG_COMPAT_VDSO=y
+
