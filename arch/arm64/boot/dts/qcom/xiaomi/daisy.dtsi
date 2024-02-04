@@ -12,3 +12,6 @@
  */
 
 #include "sakura/daisy.dtsi"
+#include "msm8953-oc-cpu.dtsi"
+#include "msm8953-oc-regulator.dtsi"
+#include "msm8953-oc-gpu.dtsi"
