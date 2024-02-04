@@ -95,6 +95,9 @@ config ANDROID_PARANOID_NETWORK
 	help
 		none
 
+config SOCK_DIAG
+	bool
+
 config NETWORK_SECMARK
 	bool "Security Marking"
 	help
