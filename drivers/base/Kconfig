@@ -249,7 +249,7 @@ config SOC_BUS
 source "drivers/base/regmap/Kconfig"
 
 config DMA_SHARED_BUFFER
-	bool
+	tristate
 	default n
 	help
 	  This option enables the framework for buffer-sharing between
