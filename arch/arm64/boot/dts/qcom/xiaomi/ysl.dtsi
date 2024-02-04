@@ -12,3 +12,6 @@
  */
 
 #include "ysl/msm8953-pmi8940-mtp-ysl-overlay.dtsi"
+#include "msm8953-oc-cpu.dtsi"
+#include "msm8953-oc-regulator.dtsi"
+#include "msm8953-oc-gpu.dtsi"
