@@ -15,8 +15,6 @@
 #include <linux/filter.h>
 #include <linux/rculist_nulls.h>
 #include "percpu_freelist.h"
-#define HTAB_CREATE_FLAG_MASK						\
-	(BPF_F_NO_PREALLOC | BPF_F_RDONLY | BPF_F_WRONLY)
 
 struct bucket {
 	struct hlist_nulls_head head;
