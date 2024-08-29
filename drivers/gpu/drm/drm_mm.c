@@ -109,7 +109,7 @@ static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_
 
 INTERVAL_TREE_DEFINE(struct drm_mm_node, rb,
 		     u64, __subtree_last,
-		     START, LAST, static inline, drm_mm_interval_tree)
+		     START, LAST, static inline __maybe_unused, drm_mm_interval_tree)
 
 struct drm_mm_node *
 drm_mm_interval_first(struct drm_mm *mm, u64 start, u64 last)
