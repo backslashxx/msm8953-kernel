@@ -5999,9 +5999,9 @@ static int binder_open(struct inode *nodp, struct file *filp)
 		     current->group_leader->pid, current->pid);
 
 	eproc = kmem_cache_zalloc(binder_eproc_pool, GFP_KERNEL);
-	proc = &eproc->proc;
-	if (proc == NULL)
+	if (eproc == NULL)
 		return -ENOMEM;
+	proc = &eproc->proc;
 	spin_lock_init(&proc->inner_lock);
 	spin_lock_init(&proc->outer_lock);
 	atomic_set(&proc->tmp_ref, 0);
