@@ -4572,7 +4572,6 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
 	if (static_key_false(&generic_xdp_needed)) {
 		int ret = do_xdp_generic(rcu_dereference(skb->dev->xdp_prog),
 					 skb);
-		int ret;
 
 		if (ret != XDP_PASS) {
 			rcu_read_unlock();
