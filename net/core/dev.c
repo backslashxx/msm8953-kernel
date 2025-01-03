@@ -4042,7 +4042,7 @@ static int netif_rx_internal(struct sk_buff *skb)
 	net_timestamp_check(netdev_tstamp_prequeue, skb);
 
 	trace_netif_rx(skb);
-	
+
 	if (static_key_false(&generic_xdp_needed)) {
 		int ret = do_xdp_generic(rcu_dereference(skb->dev->xdp_prog),
 					 skb);
