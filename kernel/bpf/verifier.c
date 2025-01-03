@@ -140,10 +140,8 @@ struct bpf_verifier_stack_elem {
 	struct bpf_verifier_stack_elem *next;
 };
 
-#define BPF_COMPLEXITY_LIMIT_INSNS	131072
+#define BPF_COMPLEXITY_LIMIT_INSNS	98304
 #define BPF_COMPLEXITY_LIMIT_STACK	1024
-
-#define BPF_MAP_PTR_POISON ((void *)0xeB9F + POISON_POINTER_DELTA)
 
 struct bpf_call_arg_meta {
 	struct bpf_map *map_ptr;
@@ -156,25 +154,59 @@ struct bpf_call_arg_meta {
 /* verbose verifier prints what it's seeing
  * bpf_check() is called under lock, so no race to access these global vars
  */
-static struct bpf_verifer_log verifier_log;
+static struct bpf_verifier_log verifier_log;
 
 static DEFINE_MUTEX(bpf_verifier_lock);
 
-/* log_level controls verbosity level of eBPF verifier.
- * verbose() is used to dump the verification trace to the log, so the user
- * can figure out what's wrong with the program
- */
-static __printf(1, 2) void verbose(const char *fmt, ...)
+void bpf_verifier_vlog(struct bpf_verifier_log *log,
+		       const char *fmt, va_list args)
 {
-	struct bpf_verifer_log *log = &verifier_log;
+	unsigned int n;
+
+	n = vscnprintf(log->kbuf, BPF_VERIFIER_TMP_LOG_SIZE, fmt, args);
+
+	WARN_ONCE(n >= BPF_VERIFIER_TMP_LOG_SIZE - 1,
+		  "verifier log line truncated - local buffer too short\n");
+
+	n = min(log->len_total - log->len_used - 1, n);
+	log->kbuf[n] = '\0';
+
+	if (!copy_to_user(log->ubuf + log->len_used, log->kbuf, n + 1))
+		log->len_used += n;
+	else
+		log->ubuf = NULL;
+}
+
+/* log_level controls verbosity level of eBPF verifier.
+ * bpf_verifier_log_write() is used to dump the verification trace to the log,
+ * so the user can figure out what's wrong with the program
+ */
+__printf(2, 3) void bpf_verifier_log_write(struct bpf_verifier_log *log,
+						  const char *fmt, ...)
+{
 	va_list args;
 
-	if (!log->level || bpf_verifier_log_full(log))
+	if (!bpf_verifier_log_needed(log))
 		return;
 
 	va_start(args, fmt);
-	log->len_used += vscnprintf(log->kbuf + log->len_used,
-				    log->len_total - log->len_used, fmt, args);
+	bpf_verifier_vlog(log, fmt, args);
+	va_end(args);
+}
+EXPORT_SYMBOL_GPL(bpf_verifier_log_write);
+/* Historically bpf_verifier_log_write was called verbose, but the name was too
+ * generic for symbol export. The function was renamed, but not the calls in
+ * the verifier to avoid complicating backports. Hence the alias below.
+ */
+static __printf(1, 2) void verbose(const char *fmt, ...)
+{
+	va_list args;
+
+	if (!bpf_verifier_log_needed(&verifier_log))
+		return;
+
+	va_start(args, fmt);
+	bpf_verifier_vlog(&verifier_log, fmt, args);
 	va_end(args);
 }
 
@@ -505,7 +537,6 @@ static void reset_reg_range_values(struct bpf_reg_state *regs, u32 regno)
 {
 	regs[regno].min_value = BPF_REGISTER_MIN_RANGE;
 	regs[regno].max_value = BPF_REGISTER_MAX_RANGE;
-	regs[regno].value_from_signed = false;
 	regs[regno].min_align = 0;
 }
 
@@ -878,6 +909,9 @@ static int check_ptr_alignment(struct bpf_verifier_env *env,
 			       int off, int size)
 {
 	bool strict = env->strict_alignment;
+
+	if (!IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS))
+		strict = true;
 
 	switch (reg->type) {
 	case PTR_TO_PACKET:
@@ -1316,10 +1350,12 @@ static int check_map_func_compatibility(struct bpf_map *map, int func_id)
 		    func_id != BPF_FUNC_current_task_under_cgroup)
 			goto error;
 		break;
+	/* devmap returns a pointer to a live net_device ifindex that we cannot
+	 * allow to be modified from bpf side. So do not allow lookup elements
+	 * for now.
+	 */
 	case BPF_MAP_TYPE_DEVMAP:
-	case BPF_MAP_TYPE_DEVMAP_HASH:
-		if (func_id != BPF_FUNC_redirect_map &&
-		    func_id != BPF_FUNC_map_lookup_elem)
+		if (func_id != BPF_FUNC_redirect_map)
 			goto error;
 		break;
 	case BPF_MAP_TYPE_ARRAY_OF_MAPS:
@@ -1357,8 +1393,7 @@ static int check_map_func_compatibility(struct bpf_map *map, int func_id)
 			goto error;
 		break;
 	case BPF_FUNC_redirect_map:
-		if (map->map_type != BPF_MAP_TYPE_DEVMAP &&
-		    map->map_type != BPF_MAP_TYPE_DEVMAP_HASH)
+		if (map->map_type != BPF_MAP_TYPE_DEVMAP)
 			goto error;
 		break;
 	case BPF_FUNC_sk_redirect_map:
@@ -1508,8 +1543,6 @@ static int check_call(struct bpf_verifier_env *env, int func_id, int insn_idx)
 	} else if (fn->ret_type == RET_VOID) {
 		regs[BPF_REG_0].type = NOT_INIT;
 	} else if (fn->ret_type == RET_PTR_TO_MAP_VALUE_OR_NULL) {
-		struct bpf_insn_aux_data *insn_aux;
-
 		regs[BPF_REG_0].type = PTR_TO_MAP_VALUE_OR_NULL;
 		regs[BPF_REG_0].max_value = regs[BPF_REG_0].min_value = 0;
 		/* remember map_ptr, so that check_map_access()
@@ -1522,11 +1555,7 @@ static int check_call(struct bpf_verifier_env *env, int func_id, int insn_idx)
 		}
 		regs[BPF_REG_0].map_ptr = meta.map_ptr;
 		regs[BPF_REG_0].id = ++env->id_gen;
-		insn_aux = &env->insn_aux_data[insn_idx];
-		if (!insn_aux->map_ptr)
-			insn_aux->map_ptr = meta.map_ptr;
-		else if (insn_aux->map_ptr != meta.map_ptr)
-			insn_aux->map_ptr = BPF_MAP_PTR_POISON;
+		env->insn_aux_data[insn_idx].map_ptr = meta.map_ptr;
 	} else {
 		verbose("unknown return type %d of func %s#%d\n",
 			fn->ret_type, func_id_name(func_id), func_id);
@@ -1615,7 +1644,7 @@ add_imm:
 		dst_reg->id = ++env->id_gen;
 
 		/* something was added to pkt_ptr, set range to zero */
-		dst_reg->aux_off += dst_reg->off;
+		dst_reg->aux_off = dst_reg->off;
 		dst_reg->off = 0;
 		dst_reg->range = 0;
 		if (had_id)
@@ -1971,9 +2000,10 @@ static void adjust_reg_min_max_vals(struct bpf_verifier_env *env,
 		 * unsigned shift, so make the appropriate casts.
 		 */
 		if (min_val < 0 || dst_reg->min_value < 0) {
-			reset_reg_range_values(regs, insn->dst_reg);
+			dst_reg->min_value = BPF_REGISTER_MIN_RANGE;
 		} else {
-			dst_reg->min_value = (u64)(dst_reg->min_value) >> max_val;
+			dst_reg->min_value =
+				(u64)(dst_reg->min_value) >> min_val;
 		}
 		if (min_val < 0) {
 			dst_reg->min_align = 1;
@@ -2089,11 +2119,9 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 
 			regs[insn->dst_reg].type = CONST_IMM;
 			regs[insn->dst_reg].imm = imm;
-			regs[insn->dst_reg].id = 0;
 			regs[insn->dst_reg].max_value = imm;
 			regs[insn->dst_reg].min_value = imm;
 			regs[insn->dst_reg].min_align = calc_align(imm);
-			regs[insn->dst_reg].value_from_signed = false;
 		}
 
 	} else if (opcode > BPF_END) {
@@ -2635,7 +2663,6 @@ static int check_ld_imm(struct bpf_verifier_env *env, struct bpf_insn *insn)
 
 		regs[insn->dst_reg].type = CONST_IMM;
 		regs[insn->dst_reg].imm = imm;
-		regs[insn->dst_reg].id = 0;
 		return 0;
 	}
 
@@ -2653,7 +2680,6 @@ static bool may_access_skb(enum bpf_prog_type type)
 	case BPF_PROG_TYPE_SOCKET_FILTER:
 	case BPF_PROG_TYPE_SCHED_CLS:
 	case BPF_PROG_TYPE_SCHED_ACT:
-	case BPF_PROG_TYPE_CGROUP_SKB:
 		return true;
 	default:
 		return false;
@@ -2923,8 +2949,7 @@ err_free:
 /* the following conditions reduce the number of explored insns
  * from ~140k to ~80k for ultra large programs that use a lot of ptr_to_packet
  */
-static bool compare_ptrs_to_packet(struct bpf_verifier_env *env,
-				   struct bpf_reg_state *old,
+static bool compare_ptrs_to_packet(struct bpf_reg_state *old,
 				   struct bpf_reg_state *cur)
 {
 	if (old->id != cur->id)
@@ -2967,7 +2992,7 @@ static bool compare_ptrs_to_packet(struct bpf_verifier_env *env,
 	 * 'if (R4 > data_end)' and all further insn were already good with r=20,
 	 * so they will be good with r=30 and we can prune the search.
 	 */
-	if (!env->strict_alignment && old->off <= cur->off &&
+	if (old->off <= cur->off &&
 	    old->off >= old->range && cur->off >= cur->range)
 		return true;
 
@@ -3039,7 +3064,7 @@ static bool states_equal(struct bpf_verifier_env *env,
 			continue;
 
 		if (rold->type == PTR_TO_PACKET && rcur->type == PTR_TO_PACKET &&
-		    compare_ptrs_to_packet(env, rold, rcur))
+		    compare_ptrs_to_packet(rold, rcur))
 			continue;
 
 		return false;
@@ -3056,8 +3081,6 @@ static bool states_equal(struct bpf_verifier_env *env,
 			 */
 			return false;
 		if (i % BPF_REG_SIZE)
-			continue;
-		if (old->stack_slot_type[i] != STACK_SPILL)
 			continue;
 		if (memcmp(&old->spilled_regs[i / BPF_REG_SIZE],
 			   &cur->spilled_regs[i / BPF_REG_SIZE],
@@ -3845,8 +3868,6 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 		if (insn->imm == BPF_FUNC_xdp_adjust_head)
 			prog->xdp_adjust_head = 1;
 		if (insn->imm == BPF_FUNC_tail_call) {
-			env->prog->aux->stack_depth = MAX_BPF_STACK;
-
 			/* mark bpf_tail_call as different opcode to avoid
 			 * conditional branch in the interpeter for every normal
 			 * call and to prevent accidental JITing by JIT compiler
@@ -3884,8 +3905,7 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 
 		if (ebpf_jit_enabled() && insn->imm == BPF_FUNC_map_lookup_elem) {
 			map_ptr = env->insn_aux_data[i + delta].map_ptr;
-			if (map_ptr == BPF_MAP_PTR_POISON ||
-			    !map_ptr->ops->map_gen_lookup)
+			if (!map_ptr->ops->map_gen_lookup)
 				goto patch_call_imm;
 
 			cnt = map_ptr->ops->map_gen_lookup(map_ptr, insn_buf);
@@ -3947,7 +3967,7 @@ static void free_states(struct bpf_verifier_env *env)
 
 int bpf_check(struct bpf_prog **prog, union bpf_attr *attr)
 {
-	struct bpf_verifer_log *log = &verifier_log;
+	struct bpf_verifier_log *log = &verifier_log;
 	struct bpf_verifier_env *env;
 	int ret = -EINVAL;
 
@@ -3984,16 +4004,13 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr)
 			goto err_unlock;
 
 		ret = -ENOMEM;
-		log->kbuf = vmalloc(log->len_total);
-		if (!log->kbuf)
-			goto err_unlock;
 	} else {
 		log->level = 0;
 	}
-
-	env->strict_alignment = !!(attr->prog_flags & BPF_F_STRICT_ALIGNMENT);
-	if (!IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS))
+	if (attr->prog_flags & BPF_F_STRICT_ALIGNMENT)
 		env->strict_alignment = true;
+	else
+		env->strict_alignment = false;
 
 	if (env->prog->aux->offload) {
 		ret = bpf_prog_offload_verifier_prep(env);
@@ -4035,17 +4052,12 @@ skip_full_check:
 		ret = fixup_bpf_calls(env);
 
 	if (log->level && bpf_verifier_log_full(log)) {
-		BUG_ON(log->len_used >= log->len_total);
-		/* verifier log exceeded user supplied buffer */
 		ret = -ENOSPC;
-		/* fall through to return what was recorded */
 	}
 
-	/* copy verifier log back to user space including trailing zero */
-	if (log->level && copy_to_user(log->ubuf, log->kbuf,
-				       log->len_used + 1) != 0) {
+	if (log->level && !log->ubuf) {
 		ret = -EFAULT;
-		goto free_log_buf;
+		goto err_release_maps;
 	}
 
 	if (ret == 0 && env->used_map_cnt) {
@@ -4056,7 +4068,7 @@ skip_full_check:
 
 		if (!env->prog->aux->used_maps) {
 			ret = -ENOMEM;
-			goto free_log_buf;
+			goto err_release_maps;
 		}
 
 		memcpy(env->prog->aux->used_maps, env->used_maps,
@@ -4069,9 +4081,7 @@ skip_full_check:
 		convert_pseudo_ld_imm64(env);
 	}
 
-free_log_buf:
-	if (log->level)
-		vfree(log->kbuf);
+err_release_maps:
 	if (!env->prog->aux->used_maps)
 		/* if we didn't copy map pointers into bpf_prog_info, release
 		 * them now. Otherwise free_used_maps() will release them.
@@ -4109,10 +4119,7 @@ int bpf_analyzer(struct bpf_prog *prog, const struct bpf_ext_analyzer_ops *ops,
 	mutex_lock(&bpf_verifier_lock);
 
 	verifier_log.level = 0;
-
 	env->strict_alignment = false;
-	if (!IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS))
-		env->strict_alignment = true;
 
 	env->explored_states = kcalloc(env->prog->len,
 				       sizeof(struct bpf_verifier_state_list *),
