@@ -3040,6 +3040,7 @@ bpf_get_skb_set_tunnel_proto(enum bpf_func_id which)
 						   METADATA_IP_TUNNEL,
 						   GFP_KERNEL);
 		if (!md_dst)
+			return NULL;
 	}
 
 	switch (which) {
