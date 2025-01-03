@@ -3515,13 +3515,13 @@ static bool do_propagate_liveness(const struct bpf_verifier_state *state,
 	}
 	/* ... and stack slots */
 	for (i = 0; i < MAX_BPF_STACK / BPF_REG_SIZE; i++) {
-		if (parent->stack_slot_type[i * BPF_REG_SIZE] != STACK_SPILL)
+	if (parent->stack_slot_type[i * BPF_REG_SIZE] != STACK_SPILL)
 			continue;
 		if (state->stack_slot_type[i * BPF_REG_SIZE] != STACK_SPILL)
 			continue;
 		if (parent->spilled_regs[i].live & REG_LIVE_READ)
 			continue;
-		if (state->spilled_regs[i].live == REG_LIVE_READ) {		
+		if (state->spilled_regs[i].live == REG_LIVE_READ) {
 			parent->regs[i].live |= REG_LIVE_READ;
 			touched = true;
 		}
