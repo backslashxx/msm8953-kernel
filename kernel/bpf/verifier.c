@@ -3521,7 +3521,7 @@ static bool do_propagate_liveness(const struct bpf_verifier_state *state,
 			continue;
 		if (parent->spilled_regs[i].live & REG_LIVE_READ)
 			continue;
-		if (state->spilled_regs[i].live == REG_LIVE_READ) {
+		if (state->spilled_regs[i].live == REG_LIVE_READ) {		
 			parent->regs[i].live |= REG_LIVE_READ;
 			touched = true;
 		}
