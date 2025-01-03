@@ -4047,7 +4047,7 @@ static int netif_rx_internal(struct sk_buff *skb)
 		int ret = do_xdp_generic(rcu_dereference(skb->dev->xdp_prog),
 					 skb);
 	
-	/* Consider XDP consuming the packet a success from
+		/* Consider XDP consuming the packet a success from
 		 * the netdev point of view we do not want to count
 		 * this as an error.
 		 */
