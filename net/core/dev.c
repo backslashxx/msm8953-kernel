@@ -4046,7 +4046,7 @@ static int netif_rx_internal(struct sk_buff *skb)
 	if (static_key_false(&generic_xdp_needed)) {
 		int ret = do_xdp_generic(rcu_dereference(skb->dev->xdp_prog),
 					 skb);
-	
+
 		/* Consider XDP consuming the packet a success from
 		 * the netdev point of view we do not want to count
 		 * this as an error.
@@ -4054,6 +4054,7 @@ static int netif_rx_internal(struct sk_buff *skb)
 		if (ret != XDP_PASS)
 			return NET_RX_SUCCESS;
 	}
+
 
 #ifdef CONFIG_RPS
 	if (static_key_false(&rps_needed)) {
