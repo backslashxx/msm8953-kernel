@@ -4568,6 +4568,7 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
 		return NET_RX_SUCCESS;
 
 	rcu_read_lock();
+
 	if (static_key_false(&generic_xdp_needed)) {
 		int ret = do_xdp_generic(rcu_dereference(skb->dev->xdp_prog),
 					 skb);
