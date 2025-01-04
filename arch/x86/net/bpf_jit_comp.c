@@ -1110,7 +1110,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	int i;
 
 	if (!bpf_jit_enable)
-		return orig_prog;
+		return prog;
 
 	tmp = bpf_jit_blind_constants(prog);
 	/* If blinding was requested and we failed during blinding,
