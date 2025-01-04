@@ -308,6 +308,7 @@ static struct bpf_map *htab_map_alloc(union bpf_attr *attr)
 		 * larger than max stack size
 		 */
 		goto free_htab;
+
 	if (htab->map.value_size >= KMALLOC_MAX_SIZE -
 	    MAX_BPF_STACK - sizeof(struct htab_elem))
 		/* if value_size is bigger, the user space won't be able to
