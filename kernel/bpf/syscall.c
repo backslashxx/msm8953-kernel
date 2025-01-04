@@ -1118,6 +1118,7 @@ struct bpf_prog *bpf_prog_inc(struct bpf_prog *prog)
 {
 	return bpf_prog_add(prog, 1);
 }
+EXPORT_SYMBOL_GPL(bpf_prog_inc);
 
 /* prog_idr_lock should have been held */
 struct bpf_prog *bpf_prog_inc_not_zero(struct bpf_prog *prog)
@@ -1138,7 +1139,23 @@ struct bpf_prog *bpf_prog_inc_not_zero(struct bpf_prog *prog)
 }
 EXPORT_SYMBOL_GPL(bpf_prog_inc_not_zero);
 
-static struct bpf_prog *__bpf_prog_get(u32 ufd, enum bpf_prog_type *attach_type)
+static bool bpf_prog_get_ok(struct bpf_prog *prog,
+			    enum bpf_prog_type *attach_type, bool attach_drv)
+{
+	/* not an attachment, just a refcount inc, always allow */
+	if (!attach_type)
+		return true;
+
+	if (prog->type != *attach_type)
+		return false;
+	if (bpf_prog_is_dev_bound(prog->aux) && !attach_drv)
+		return false;
+
+	return true;
+}
+
+static struct bpf_prog *__bpf_prog_get(u32 ufd, enum bpf_prog_type *attach_type,
+				       bool attach_drv)
 {
 	struct fd f = fdget(ufd);
 	struct bpf_prog *prog;
@@ -1146,7 +1163,7 @@ static struct bpf_prog *__bpf_prog_get(u32 ufd, enum bpf_prog_type *attach_type)
 	prog = ____bpf_prog_get(f);
 	if (IS_ERR(prog))
 		return prog;
-	if (attach_type && (prog->type != *attach_type || prog->aux->offload)) {
+	if (!bpf_prog_get_ok(prog, attach_type, attach_drv)) {
 		prog = ERR_PTR(-EINVAL);
 		goto out;
 	}
@@ -1159,18 +1176,8 @@ out:
 
 struct bpf_prog *bpf_prog_get(u32 ufd)
 {
-	return __bpf_prog_get(ufd, NULL);
+	return __bpf_prog_get(ufd, NULL, false);
 }
-
-struct bpf_prog *bpf_prog_get_type(u32 ufd, enum bpf_prog_type type)
-{
-	struct bpf_prog *prog = __bpf_prog_get(ufd, &type);
-
-	if (!IS_ERR(prog))
-		trace_bpf_prog_get_type(prog);
-	return prog;
-}
-EXPORT_SYMBOL_GPL(bpf_prog_get_type);
 
 /* Initially all BPF programs could be loaded w/o specifying
  * expected_attach_type. Later for some of them specifying expected_attach_type
@@ -1218,6 +1225,10 @@ bpf_prog_load_check_attach_type(enum bpf_prog_type prog_type,
 		case BPF_CGROUP_INET6_BIND:
 		case BPF_CGROUP_INET4_CONNECT:
 		case BPF_CGROUP_INET6_CONNECT:
+		case BPF_CGROUP_UDP4_SENDMSG:
+		case BPF_CGROUP_UDP6_SENDMSG:
+		case BPF_CGROUP_UDP4_RECVMSG:
+		case BPF_CGROUP_UDP6_RECVMSG:
 			return 0;
 		default:
 			return -EINVAL;
@@ -1227,17 +1238,16 @@ bpf_prog_load_check_attach_type(enum bpf_prog_type prog_type,
 	}
 }
 
-static int bpf_prog_attach_check_attach_type(const struct bpf_prog *prog,
-					     enum bpf_attach_type attach_type)
+struct bpf_prog *bpf_prog_get_type_dev(u32 ufd, enum bpf_prog_type type,
+				       bool attach_drv)
 {
-	switch (prog->type) {
-	case BPF_PROG_TYPE_CGROUP_SOCK:
-	case BPF_PROG_TYPE_CGROUP_SOCK_ADDR:
-		return attach_type == prog->expected_attach_type ? 0 : -EINVAL;
-	default:
-		return 0;
-	}
+	struct bpf_prog *prog = __bpf_prog_get(ufd, &type, attach_drv);
+
+	if (!IS_ERR(prog))
+		trace_bpf_prog_get_type(prog);
+	return prog;
 }
+EXPORT_SYMBOL_GPL(bpf_prog_get_type_dev);
 
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD expected_attach_type
@@ -1298,7 +1308,6 @@ static int bpf_prog_load(union bpf_attr *attr)
 		goto free_prog_sec;
 
 	prog->len = attr->insn_cnt;
-
 	err = -EFAULT;
 	if (copy_from_user(prog->insns, u64_to_user_ptr(attr->insns),
 			   bpf_prog_insn_size(prog)) != 0)
@@ -1325,7 +1334,6 @@ static int bpf_prog_load(union bpf_attr *attr)
 	err = bpf_obj_name_cpy(prog->aux->name, attr->prog_name);
 	if (err)
 		goto free_prog;
-
 	/* run eBPF verifier */
 	err = bpf_check(&prog, attr);
 	if (err < 0)
@@ -1389,6 +1397,18 @@ static int bpf_obj_get(const union bpf_attr *attr)
 }
 
 #ifdef CONFIG_CGROUP_BPF
+
+static int bpf_prog_attach_check_attach_type(const struct bpf_prog *prog,
+					     enum bpf_attach_type attach_type)
+{
+	switch (prog->type) {
+	case BPF_PROG_TYPE_CGROUP_SOCK:
+	case BPF_PROG_TYPE_CGROUP_SOCK_ADDR:
+		return attach_type == prog->expected_attach_type ? 0 : -EINVAL;
+	default:
+		return 0;
+	}
+}
 
 #define BPF_PROG_ATTACH_LAST_FIELD attach_flags
 
@@ -1459,6 +1479,10 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	case BPF_CGROUP_INET6_BIND:
 	case BPF_CGROUP_INET4_CONNECT:
 	case BPF_CGROUP_INET6_CONNECT:
+	case BPF_CGROUP_UDP4_SENDMSG:
+	case BPF_CGROUP_UDP6_SENDMSG:
+	case BPF_CGROUP_UDP4_RECVMSG:
+	case BPF_CGROUP_UDP6_RECVMSG:
 		ptype = BPF_PROG_TYPE_CGROUP_SOCK_ADDR;
 		break;
 	case BPF_CGROUP_SOCK_OPS:
@@ -1486,18 +1510,20 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	}
 
 	cgrp = cgroup_get_from_fd(attr->target_fd);
-		if (IS_ERR(cgrp)) {
-			bpf_prog_put(prog);
-			return PTR_ERR(cgrp);
-		}
+	if (IS_ERR(cgrp)) {
+		bpf_prog_put(prog);
+		return PTR_ERR(cgrp);
+	}
 
 	ret = cgroup_bpf_attach(cgrp, prog, attr->attach_type,
-							attr->attach_flags);
+				attr->attach_flags);
 	if (ret)
 		bpf_prog_put(prog);
 	cgroup_put(cgrp);
-	return 0;
+
+	return ret;
 }
+
 #define BPF_PROG_DETACH_LAST_FIELD attach_type
 
 static int bpf_prog_detach(const union bpf_attr *attr)
@@ -1527,6 +1553,10 @@ static int bpf_prog_detach(const union bpf_attr *attr)
 	case BPF_CGROUP_INET6_BIND:
 	case BPF_CGROUP_INET4_CONNECT:
 	case BPF_CGROUP_INET6_CONNECT:
+	case BPF_CGROUP_UDP4_SENDMSG:
+	case BPF_CGROUP_UDP6_SENDMSG:
+	case BPF_CGROUP_UDP4_RECVMSG:
+	case BPF_CGROUP_UDP6_RECVMSG:
 		ptype = BPF_PROG_TYPE_CGROUP_SOCK_ADDR;
 		break;
 	case BPF_CGROUP_SOCK_OPS:
@@ -1585,7 +1615,12 @@ static int bpf_prog_query(const union bpf_attr *attr,
 	case BPF_CGROUP_INET6_POST_BIND:
 	case BPF_CGROUP_INET4_CONNECT:
 	case BPF_CGROUP_INET6_CONNECT:
+	case BPF_CGROUP_UDP4_SENDMSG:
+	case BPF_CGROUP_UDP6_SENDMSG:
+	case BPF_CGROUP_UDP4_RECVMSG:
+	case BPF_CGROUP_UDP6_RECVMSG:
 	case BPF_CGROUP_SOCK_OPS:
+	case BPF_CGROUP_DEVICE:
 		break;
 	default:
 		return -EINVAL;
@@ -1962,7 +1997,6 @@ static int bpf_btf_load(const union bpf_attr *attr)
 }
 
 SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, size)
-
 {
 	union bpf_attr attr;
 	int err;
