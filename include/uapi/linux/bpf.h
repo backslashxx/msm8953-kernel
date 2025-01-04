@@ -1284,4 +1284,24 @@ enum {
 #define TCP_BPF_IW		1001	/* Set TCP initial congestion window */
 #define TCP_BPF_SNDCWND_CLAMP	1002	/* Set sndcwnd_clamp */
 
+struct bpf_perf_event_value {
+	__u64 counter;
+	__u64 enabled;
+	__u64 running;
+};
+
+#define BPF_DEVCG_ACC_MKNOD	(1ULL << 0)
+#define BPF_DEVCG_ACC_READ	(1ULL << 1)
+#define BPF_DEVCG_ACC_WRITE	(1ULL << 2)
+
+#define BPF_DEVCG_DEV_BLOCK	(1ULL << 0)
+#define BPF_DEVCG_DEV_CHAR	(1ULL << 1)
+
+struct bpf_cgroup_dev_ctx {
+	/* access_type encoded as (BPF_DEVCG_ACC_* << 16) | BPF_DEVCG_DEV_* */
+	__u32 access_type;
+	__u32 major;
+	__u32 minor;
+};
+
 #endif /* _UAPI__LINUX_BPF_H__ */
