@@ -881,7 +881,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	/* Fake pass to fill in ctx->offset. */
 	if (build_body(&ctx)) {
 		prog = orig_prog;
-		goto out_off;
+		goto out;
 	}
 
 	if (build_prologue(&ctx)) {
