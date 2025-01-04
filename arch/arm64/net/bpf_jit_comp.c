@@ -848,6 +848,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 {
 	struct bpf_prog *tmp, *orig_prog = prog;
 	struct bpf_binary_header *header;
+	bool was_classic = bpf_prog_was_classic(prog);
 	bool tmp_blinded = false;
 	struct jit_ctx ctx;
 	int image_size;
