@@ -170,7 +170,6 @@ static u32 array_map_gen_lookup(struct bpf_map *map, struct bpf_insn *insn_buf)
 	*insn++ = BPF_ALU64_IMM(BPF_ADD, map_ptr, offsetof(struct bpf_array, value));
 	*insn++ = BPF_LDX_MEM(BPF_W, ret, index, 0);
 	*insn++ = BPF_JMP_IMM(BPF_JGE, ret, map->max_entries, 3);
-	*insn++ = BPF_JMP_IMM(BPF_JGE, ret, map->max_entries, 3);
 
 	if (is_power_of_2(elem_size)) {
 		*insn++ = BPF_ALU64_IMM(BPF_LSH, ret, ilog2(elem_size));
