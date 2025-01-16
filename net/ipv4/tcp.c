@@ -1027,8 +1027,14 @@ int tcp_sendpage(struct sock *sk, struct page *page, int offset,
 {
 	ssize_t res;
 
+	/* If MPTCP is enabled, we check it later after establishment */
+#ifdef CONFIG_MPTCP
+	if (!mptcp(tcp_sk(sk)) && (!(sk->sk_route_caps & NETIF_F_SG) ||
+				   !sk_check_csum_caps(sk)))
+#else
 	if (!(sk->sk_route_caps & NETIF_F_SG) ||
 	    !sk_check_csum_caps(sk))
+#endif
 		return sock_no_sendpage(sk->sk_socket, page, offset, size,
 					flags);
 
