@@ -109,7 +109,10 @@ static __u32 tcp_v6_init_sequence(const struct sk_buff *skb)
 					    tcp_hdr(skb)->source);
 }
 
-static int tcp_v6_connect(struct sock *sk, struct sockaddr *uaddr,
+#ifndef CONFIG_MPTCP
+static
+#endif
+int tcp_v6_connect(struct sock *sk, struct sockaddr *uaddr,
 			  int addr_len)
 {
 	struct sockaddr_in6 *usin = (struct sockaddr_in6 *) uaddr;
