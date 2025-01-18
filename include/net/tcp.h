@@ -2112,6 +2112,7 @@ struct tcp_ulp_ops {
 	struct list_head	list;
 	/* initialize ulp */
 	int (*init)(struct sock *sk);
+
 	/* cleanup ulp */
 	void (*release)(struct sock *sk);
 	char		name[TCP_ULP_NAME_MAX];
