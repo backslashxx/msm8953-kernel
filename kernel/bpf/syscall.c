@@ -1345,7 +1345,7 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	if (ret)
 		bpf_prog_put(prog);
 	cgroup_put(cgrp);
-	return ret;
+	return 0;
 }
 #define BPF_PROG_DETACH_LAST_FIELD attach_type
 
