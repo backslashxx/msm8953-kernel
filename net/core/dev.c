@@ -4617,6 +4617,39 @@ static int __netif_receive_skb(struct sk_buff *skb)
 	} else
 		ret = __netif_receive_skb_core(skb, false);
 
+
+	return ret;
+}
+
+static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
+{
+	struct bpf_prog *old = rtnl_dereference(dev->xdp_prog);
+	struct bpf_prog *new = xdp->prog;
+	int ret = 0;
+
+	switch (xdp->command) {
+	case XDP_SETUP_PROG:
+		rcu_assign_pointer(dev->xdp_prog, new);
+		if (old)
+			bpf_prog_put(old);
+
+		if (old && !new) {
+			static_key_slow_dec(&generic_xdp_needed);
+		} else if (new && !old) {
+			static_key_slow_inc(&generic_xdp_needed);
+			dev_disable_lro(dev);
+		}
+		break;
+
+	case XDP_QUERY_PROG:
+		xdp->prog_attached = !!old;
+		xdp->prog_id = old ? old->aux->id : 0;
+		break;
+
+	default:
+		ret = -EINVAL;
+		break;
+	}
 	return ret;
 }
 
@@ -7091,6 +7124,37 @@ int dev_change_proto_down(struct net_device *dev, bool proto_down)
 }
 EXPORT_SYMBOL(dev_change_proto_down);
 
+u8 __dev_xdp_attached(struct net_device *dev, bpf_op_t bpf_op, u32 *prog_id)
+{
+	struct netdev_bpf xdp;
+
+	memset(&xdp, 0, sizeof(xdp));
+	xdp.command = XDP_QUERY_PROG;
+
+	/* Query must always succeed. */
+	WARN_ON(bpf_op(dev, &xdp) < 0);
+	if (prog_id)
+		*prog_id = xdp.prog_id;
+
+	return xdp.prog_attached;
+}
+
+static int dev_xdp_install(struct net_device *dev, bpf_op_t bpf_op,
+			   u32 flags, struct bpf_prog *prog)
+{
+	struct netdev_bpf xdp;
+
+	memset(&xdp, 0, sizeof(xdp));
+	if (flags & XDP_FLAGS_HW_MODE)
+		xdp.command = XDP_SETUP_PROG_HW;
+	else
+		xdp.command = XDP_SETUP_PROG;
+	xdp.flags = flags;
+	xdp.prog = prog;
+
+	return bpf_op(dev, &xdp);
+}
+
 /**
  *	dev_change_xdp_fd - set or clear a bpf program for a device rx path
  *	@dev: device
@@ -7098,17 +7162,32 @@ EXPORT_SYMBOL(dev_change_proto_down);
  *
  *	Set or clear a bpf program for a device
  */
-int dev_change_xdp_fd(struct net_device *dev, int fd)
+int dev_change_xdp_fd(struct net_device *dev, int fd, u32 flags)
 {
 	const struct net_device_ops *ops = dev->netdev_ops;
 	struct bpf_prog *prog = NULL;
-	struct netdev_xdp xdp = {};
+	bpf_op_t bpf_op, bpf_chk;
 	int err;
 
-	if (!ops->ndo_xdp)
+	ASSERT_RTNL();
+
+	bpf_op = bpf_chk = ops->ndo_bpf;
+	if (!bpf_op && (flags & (XDP_FLAGS_DRV_MODE | XDP_FLAGS_HW_MODE)))
 		return -EOPNOTSUPP;
+	if (!bpf_op || (flags & XDP_FLAGS_SKB_MODE))
+		bpf_op = generic_xdp_install;
+	if (bpf_op == bpf_chk)
+		bpf_chk = generic_xdp_install;
+
 	if (fd >= 0) {
-		prog = bpf_prog_get_type(fd, BPF_PROG_TYPE_XDP);
+		if (bpf_chk && __dev_xdp_attached(dev, bpf_chk, NULL))
+			return -EEXIST;
+		if ((flags & XDP_FLAGS_UPDATE_IF_NOEXIST) &&
+		    __dev_xdp_attached(dev, bpf_op, NULL))
+			return -EBUSY;
+
+		prog = bpf_prog_get_type_dev(fd, BPF_PROG_TYPE_XDP,
+					     bpf_op == ops->ndo_bpf);
 		if (IS_ERR(prog))
 			return PTR_ERR(prog);
 
@@ -7120,15 +7199,12 @@ int dev_change_xdp_fd(struct net_device *dev, int fd)
 		}
 	}
 
-	xdp.command = XDP_SETUP_PROG;
-	xdp.prog = prog;
-	err = ops->ndo_xdp(dev, &xdp);
+	err = dev_xdp_install(dev, bpf_op, flags, prog);
 	if (err < 0 && prog)
 		bpf_prog_put(prog);
 
 	return err;
 }
-EXPORT_SYMBOL(dev_change_xdp_fd);
 
 /**
  *	dev_new_index	-	allocate an ifindex

@@ -269,13 +269,14 @@ const struct bpf_func_proto *bpf_get_trace_printk_proto(void)
 	return &bpf_trace_printk_proto;
 }
 
-BPF_CALL_2(bpf_perf_event_read, struct bpf_map *, map, u64, flags)
+static __always_inline int
+get_map_perf_counter(struct bpf_map *map, u64 flags,
+		     u64 *value, u64 *enabled, u64 *running)
 {
 	struct bpf_array *array = container_of(map, struct bpf_array, map);
 	unsigned int cpu = smp_processor_id();
 	u64 index = flags & BPF_F_INDEX_MASK;
 	struct bpf_event_entry *ee;
-	struct perf_event *event;
 
 	if (unlikely(flags & ~(BPF_F_INDEX_MASK)))
 		return -EINVAL;
@@ -288,21 +289,22 @@ BPF_CALL_2(bpf_perf_event_read, struct bpf_map *, map, u64, flags)
 	if (!ee)
 		return -ENOENT;
 
-	event = ee->event;
-	if (unlikely(event->attr.type != PERF_TYPE_HARDWARE &&
-		     event->attr.type != PERF_TYPE_RAW))
-		return -EINVAL;
+	return perf_event_read_local(ee->event, value, enabled, running);
+}
 
-	/* make sure event is local and doesn't have pmu::count */
-	if (unlikely(event->oncpu != cpu || event->pmu->count))
-		return -EINVAL;
+BPF_CALL_2(bpf_perf_event_read, struct bpf_map *, map, u64, flags)
+{
+	u64 value = 0;
+	int err;
 
+	err = get_map_perf_counter(map, flags, &value, NULL, NULL);
 	/*
-	 * we don't know if the function is run successfully by the
-	 * return value. It can be judged in other places, such as
-	 * eBPF programs.
+	 * this api is ugly since we miss [-22..-2] range of valid
+	 * counter values, but that's uapi
 	 */
-	return perf_event_read_local(event);
+	if (err)
+		return err;
+	return value;
 }
 
 static const struct bpf_func_proto bpf_perf_event_read_proto = {
@@ -311,6 +313,33 @@ static const struct bpf_func_proto bpf_perf_event_read_proto = {
 	.ret_type	= RET_INTEGER,
 	.arg1_type	= ARG_CONST_MAP_PTR,
 	.arg2_type	= ARG_ANYTHING,
+};
+
+BPF_CALL_4(bpf_perf_event_read_value, struct bpf_map *, map, u64, flags,
+	   struct bpf_perf_event_value *, buf, u32, size)
+{
+	int err = -EINVAL;
+
+	if (unlikely(size != sizeof(struct bpf_perf_event_value)))
+		goto clear;
+	err = get_map_perf_counter(map, flags, &buf->counter, &buf->enabled,
+				   &buf->running);
+	if (unlikely(err))
+		goto clear;
+	return 0;
+clear:
+	memset(buf, 0, size);
+	return err;
+}
+
+static const struct bpf_func_proto bpf_perf_event_read_value_proto = {
+	.func		= bpf_perf_event_read_value,
+	.gpl_only	= true,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_ANYTHING,
+	.arg3_type	= ARG_PTR_TO_UNINIT_MEM,
+	.arg4_type	= ARG_CONST_SIZE,
 };
 
 static __always_inline u64

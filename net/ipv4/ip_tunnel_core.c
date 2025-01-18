@@ -137,7 +137,7 @@ struct metadata_dst *iptunnel_metadata_reply(struct metadata_dst *md,
 	if (!md || md->u.tun_info.mode & IP_TUNNEL_INFO_TX)
 		return NULL;
 
-	res = metadata_dst_alloc(0, flags);
+	res = metadata_dst_alloc(0, METADATA_IP_TUNNEL, flags);
 	if (!res)
 		return NULL;
 

@@ -811,7 +811,7 @@ struct tc_to_netdev {
 /* These structures hold the attributes of xdp state that are being passed
  * to the netdevice through the xdp op.
  */
-enum xdp_netdev_command {
+enum bpf_netdev_command {
 	/* Set or clear a bpf program used in the earliest stages of packet
 	 * rx. The prog will have been loaded as BPF_PROG_TYPE_XDP. The callee
 	 * is responsible for calling bpf_prog_put on any old progs that are
@@ -820,8 +820,10 @@ enum xdp_netdev_command {
 	 * when it is no longer used.
 	 */
 	XDP_SETUP_PROG,
+	XDP_SETUP_PROG_HW,
 	/* Check if a bpf program is set on the device.  The callee should
-	 * return true if a program is currently attached and running.
+	 * set @prog_attached to one of XDP_ATTACHED_* values, note that "true"
+	 * is equivalent to XDP_ATTACHED_DRV.
 	 */
 	XDP_QUERY_PROG,
 	/* BPF program for offload callbacks, invoked at program load time. */
@@ -834,13 +836,19 @@ enum xdp_netdev_command {
 
 struct bpf_prog_offload_ops;
 
-struct netdev_xdp {
-	enum xdp_netdev_command command;
+struct netdev_bpf {
+	enum bpf_netdev_command command;
 	union {
 		/* XDP_SETUP_PROG */
-		struct bpf_prog *prog;
+		struct {
+			u32 flags;
+			struct bpf_prog *prog;
+		};
 		/* XDP_QUERY_PROG */
-		bool prog_attached;
+		struct {
+			u8 prog_attached;
+			u32 prog_id;
+		};
 		/* BPF_OFFLOAD_VERIFIER_PREP */
 		struct {
 			struct bpf_prog *prog;
@@ -1351,8 +1359,8 @@ struct net_device_ops {
 						       struct sk_buff *skb);
 	void			(*ndo_set_rx_headroom)(struct net_device *dev,
 						       int needed_headroom);
-	int			(*ndo_xdp)(struct net_device *dev,
-					   struct netdev_xdp *xdp);
+	int			(*ndo_bpf)(struct net_device *dev,
+					   struct netdev_bpf *bpf);
 	int			(*ndo_xdp_xmit)(struct net_device *dev,
 						struct xdp_buff *xdp);
 	void			(*ndo_xdp_flush)(struct net_device *dev);
@@ -1832,7 +1840,7 @@ struct net_device {
 	unsigned int		num_rx_queues;
 	unsigned int		real_num_rx_queues;
 #endif
-
+    struct bpf_prog __rcu	*xdp_prog;
 	unsigned long		gro_flush_timeout;
 	rx_handler_func_t __rcu	*rx_handler;
 	void __rcu		*rx_handler_data;
@@ -3368,6 +3376,8 @@ static inline void dev_consume_skb_any(struct sk_buff *skb)
 	__dev_kfree_skb_any(skb, SKB_REASON_CONSUMED);
 }
 
+void generic_xdp_tx(struct sk_buff *skb, struct bpf_prog *xdp_prog);
+int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb);
 int netif_rx(struct sk_buff *skb);
 int netif_rx_ni(struct sk_buff *skb);
 int netif_receive_skb(struct sk_buff *skb);
@@ -3411,7 +3421,7 @@ int dev_get_phys_port_id(struct net_device *dev,
 int dev_get_phys_port_name(struct net_device *dev,
 			   char *name, size_t len);
 int dev_change_proto_down(struct net_device *dev, bool proto_down);
-int dev_change_xdp_fd(struct net_device *dev, int fd);
+int dev_change_xdp_fd(struct net_device *dev, int fd, u32 flags);
 struct sk_buff *validate_xmit_skb_list(struct sk_buff *skb, struct net_device *dev);
 struct sk_buff *dev_hard_start_xmit(struct sk_buff *skb, struct net_device *dev,
 				    struct netdev_queue *txq, int *ret);
@@ -3419,6 +3429,9 @@ struct sk_buff *dev_hard_start_xmit_list(struct sk_buff *skb,
 				struct net_device *dev,
 				struct netdev_queue *txq,
 				int *ret);
+
+typedef int (*bpf_op_t)(struct net_device *dev, struct netdev_bpf *bpf);
+u8 __dev_xdp_attached(struct net_device *dev, bpf_op_t xdp_op, u32 *prog_id);
 int __dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 int dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 bool is_skb_forwardable(const struct net_device *dev,
