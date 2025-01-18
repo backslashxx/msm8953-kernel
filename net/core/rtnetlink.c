@@ -2195,6 +2195,7 @@ static int do_setlink(const struct sk_buff *skb,
 
 	if (tb[IFLA_XDP]) {
 		struct nlattr *xdp[IFLA_XDP_MAX + 1];
+		u32 xdp_flags = 0;
 
 		err = nla_parse_nested(xdp, IFLA_XDP_MAX, tb[IFLA_XDP],
 				       ifla_xdp_policy);
@@ -2206,8 +2207,9 @@ static int do_setlink(const struct sk_buff *skb,
 			goto errout;
 		}
 		if (xdp[IFLA_XDP_FD]) {
-			err = dev_change_xdp_fd(dev,
-						nla_get_s32(xdp[IFLA_XDP_FD]));
+		err = dev_change_xdp_fd(dev,
+						nla_get_s32(xdp[IFLA_XDP_FD]),
+						xdp_flags);
 			if (err)
 				goto errout;
 			status |= DO_SETLINK_NOTIFY;
