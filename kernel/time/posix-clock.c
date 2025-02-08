@@ -342,6 +342,9 @@ static int pc_clock_settime(clockid_t id, const struct timespec *ts)
 	struct posix_clock_desc cd;
 	int err;
 
+	if (!timespec64_valid_strict(ts))
+		return -EINVAL;
+
 	err = get_clock_desc(id, &cd);
 	if (err)
 		return err;
@@ -350,9 +353,6 @@ static int pc_clock_settime(clockid_t id, const struct timespec *ts)
 		err = -EACCES;
 		goto out;
 	}
-
-	if (!timespec64_valid_strict(ts))
-		return -EINVAL;
 
 	if (cd.clk->ops.clock_settime)
 		err = cd.clk->ops.clock_settime(cd.clk, &ts64);
