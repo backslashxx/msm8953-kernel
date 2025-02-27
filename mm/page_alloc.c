@@ -3713,6 +3713,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 retry_cpuset:
 	compaction_retries = 0;
 	no_progress_loops = 0;
+	compact_result = COMPACT_SKIPPED;
 	compact_priority = DEF_COMPACT_PRIORITY;
 	cpuset_mems_cookie = read_mems_allowed_begin();
 	/*
