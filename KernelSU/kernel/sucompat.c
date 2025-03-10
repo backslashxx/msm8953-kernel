@@ -150,16 +150,22 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	const char su[] = SU_PATH;
 	char path[sizeof(su) + 1];
 
+	pr_info("execve_sucompat! hook check\n");
 	if (!ksu_execve_sucompat_hook){
 		return 0;
 	}
 	
+	pr_info("execve_sucompat! filename check\n");
 	if (unlikely(!filename_user))
 		return 0;
 
+	pr_info("execve_sucompat! path: %s\n", path);
 	memset(path, 0, sizeof(path));
+	
+	pr_info("execve_sucompat! before strncpy path: %s filename_userspace: %s\n", path, filename_user);
 	ksu_strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
+	pr_info("execve_sucompat! after strncpy path: %s filename_userspace: %s\n", path, filename_user);
 	if (likely(memcmp(path, su, sizeof(su))))
 		return 0;
 
