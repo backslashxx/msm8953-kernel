@@ -152,9 +152,28 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	
 	if (unlikely(!filename_user))
 		return 0;
-
+	
+	// add access_ok check at the very least
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)
+	if (!access_ok(VERIFY_READ, *filename_user, sizeof(path)))
+		return 0;
+#else
+	if (!access_ok(*filename_user, sizeof(path)))
+		return 0;
+#endif
+	// validate string length too
+	long len = strnlen_user(*filename_user, sizeof(path));
+	if (len == 0 || len > sizeof(path))
+		return 0;
+	
 	memset(path, 0, sizeof(path));
-	ksu_strncpy_from_user_nofault(path, *filename_user, sizeof(path));
+	
+	// copy_from_user returns 0 when successful
+	if (copy_from_user(path, *filename_user, sizeof(path) - 1) != 0)
+        	return 0;
+
+	// strncpy_from_user_nofault does this too
+	path[sizeof(path) - 1] = '\0';
 
 	if (likely(memcmp(path, su, sizeof(su))))
 		return 0;
