@@ -1,6 +1,5 @@
 # APPEND ME
 #########################
-CONFIG_LOCALVERSION="-8953"
 CONFIG_LOCALVERSION_AUTO=y
 #############################
 CONFIG_CMDLINE="cgroup_disable=memory kpti=0 nosoftlockup noirqdebug"
