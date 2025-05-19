@@ -50,14 +50,16 @@ export PATH="$CLANG_DIR/bin:$PATH"
 echo "building"
 mkdir "out_$DEVICENAME"
 
+echo "CONFIG_LOCALVERSION=\""-$DEVICENAME\""" > /tmp/lineageos_xx_devicename
+
 if [ "$DEVICENAME" == "daikura" ]; then 
-ARCH=arm64 scripts/kconfig/merge_config.sh -O "out_$DEVICENAME" arch/arm64/configs/msm8953-perf_defconfig arch/arm64/configs/xiaomi/xiaomi.config arch/arm64/configs/xiaomi/sakura.config arch/arm64/configs/xiaomi/daisy.config lineageos_xx_append
+ARCH=arm64 scripts/kconfig/merge_config.sh -O "out_$DEVICENAME" arch/arm64/configs/msm8953-perf_defconfig arch/arm64/configs/xiaomi/xiaomi.config arch/arm64/configs/xiaomi/sakura.config arch/arm64/configs/xiaomi/daisy.config lineageos_xx_append /tmp/lineageos_xx_devicename
 elif [ "$DEVICENAME" != "daikura" ]; then
 	if ! [ -f arch/arm64/configs/xiaomi/"$DEVICENAME".config ]; then
   	echo arch/arm64/configs/xiaomi/"$DEVICENAME".config doesnt exist
   	exit
 	fi
-ARCH=arm64 scripts/kconfig/merge_config.sh -O "out_$DEVICENAME" arch/arm64/configs/msm8953-perf_defconfig arch/arm64/configs/xiaomi/xiaomi.config arch/arm64/configs/xiaomi/"$DEVICENAME".config lineageos_xx_append
+ARCH=arm64 scripts/kconfig/merge_config.sh -O "out_$DEVICENAME" arch/arm64/configs/msm8953-perf_defconfig arch/arm64/configs/xiaomi/xiaomi.config arch/arm64/configs/xiaomi/"$DEVICENAME".config lineageos_xx_append /tmp/lineageos_xx_devicename
 fi
 
 
@@ -82,7 +84,8 @@ make -j24 ARCH=arm64 SUBARCH=arm64 O=out_$DEVICENAME \
 	KBUILD_BUILD_FEATURES="source: https://github.com/backslashxx/msm8953-kernel //"
 
 ccache -s
-echo "ksu: $KSUVER"
+
+rm /tmp/lineageos_xx_devicename
 
 # fp asimd evtstrm aes pmull sha1 sha2 crc32
 # for i in $(ls patches/) ; do patch -Np1 < patches/$i ; done
