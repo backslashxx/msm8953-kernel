@@ -51,13 +51,14 @@ static int susfs_update_sus_path_inode(char *target_pathname) {
 	// - so sus_path should be applied only on read-only filesystem like "erofs" or "f2fs", but not "tmpfs" or "fuse",
 	//   people may rely on HMA for /data isolation instead.
 	dev_type = p.mnt->mnt_sb->s_type->name;
-	if (!strcmp(dev_type, "tmpfs") ||
+/*	if (!strcmp(dev_type, "tmpfs") ||
 		!strcmp(dev_type, "fuse")) {
 		SUSFS_LOGE("target_pathname: '%s' cannot be added since its filesystem type is '%s'\n",
 						target_pathname, dev_type);
 		path_put(&p);
 		return 1;
 	}
+*/
 
 	inode = d_inode(p.dentry);
 	if (!inode) {
