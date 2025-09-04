@@ -1,0 +1,877 @@
+as prerequisite
+	kernfs: use kmem_cache pool for struct kernfs_open_node/file
+
+for bpf
+	BACKPORT: net: reorganize struct sock for better data locality
+	bpf: Allow building BPF JIT without module support on arm64
+	bpf: add __weak hook for allocating executable memory
+	net: Allow BFP JIT to compile without module support
+	bpf: add BPF_J{LT,LE,SLT,SLE} instructions
+	bpf: teach verifier to track stack depth
+	bpf: free up BPF_JMP | BPF_CALL | BPF_X opcode
+	bpf: Add BPF_OBJ_GET_INFO_BY_FD
+	bpf: Discard unused bpf_prog_info members code
+	Revert "bpf: avoid false sharing of map refcount with max_entries"
+	Revert "ANDROID: Fix missing uapi headers"
+	bpf: remove stubs for cBPF from arch code
+	bpf: add bpf_jit_limit knob to restrict unpriv allocations
+	bpf: fix bpf_jit_limit knob for PAGE_SIZE >= 64K
+	net, sysctl: Fix compiler warning when only cBPF is present
+	bpf: Prevent increasing bpf_jit_limit above max
+	bpf: add helper for retrieving current numa node id
+	bpf: Print function name in addition to function id
+	bpf: Refactor cgroups code in prep for new type
+	bpf: Preparing BPF for Lightweight Tunnel Infrastructure
+	bpf: BPF for lightweight tunnel infrastructure
+	bpf: add __must_check attributes to refcount manipulating helpers
+	bpf: add owner_prog_type and accounted mem to array map's fdinfo
+	ANDROID: bpf: validate bpf_func when BPF_JIT is enabled with CFI
+	bpf: Add new cgroup attach type to enable sock modifications
+	UPSTREAM: bpf: multi program support for cgroup+bpf
+	ANDROID: fix bpf jit + cfi interactions
+	bpf: Preserve const register type on const OR alu ops
+	bpf: Add support for reading socket family, type, protocol
+	bpf: fix loading of BPF_MAXINSNS sized programs
+	bpf: xdp: Allow head adjustment in XDP prog
+	bpf: add bpf_probe_read_str helper
+	Revert "BACKPORT: bpf: Add file mode configuration into bpf maps"
+	bpf: LRU List
+	bpf: Add percpu LRU list
+	bpf: Refactor codes handling percpu map
+	bpf: More comprehensive judgment type
+	bpf: Add BPF_MAP_TYPE_LRU_HASH
+	bpf: Add BPF_MAP_TYPE_LRU_PERCPU_HASH
+	bpf: drop useless bpf_fd member from cls/act
+	bpf: add prog_digest and expose it via fdinfo/netlink
+	bpf: Use u64_to_user_ptr()
+	bpf: dynamically allocate digest scratch buffer
+	bpf: rework prog_digest into prog_tag
+	bpf: add a longest prefix match trie map implementation
+	bpf, lpm: fix kfree of im_node in trie_update_elem
+	bpf, lpm: fix overflows in trie_alloc checks
+	bpf: add get_next_key callback to LPM map
+	bpf: fix wrong exposure of map_flags into fdinfo for lpm
+	bpf: Fix compilation warning in __bpf_lru_list_rotate_inactive
+	bpf: Remove unused but set variable in __bpf_lru_list_shrink_inactive()
+	bpf: Make unnecessarily global functions static
+	bpf: lru: Lower the PERCPU_NR_SCANS from 16 to 4
+	bpf_lru_list: Read double-checked variable once without lock
+	bpf: Add array of maps support
+	bpf: Add hash of maps support
+	bpf, verifier: fix rejection of unaligned access checks for map_value_adj
+	bpf: pass original insn directly to convert_ctx_access
+	bpf: allow b/h/w/dw access for bpf's cb in ctx
+	bpf: enable load bytes helper for filter/reuseport progs
+	bpf: mark all registered map/prog types as __ro_after_init
+	bpf: remove struct bpf_prog_type_list
+	bpf: remove struct bpf_map_type_list
+	bpf: add devmap, a map for storing net device references
+	bpf: inline htab_map_lookup_elem()
+	bpf: fix hashmap extra_elems logic
+	bpf: Allow selecting numa node during map creation
+	bpf: linux/bpf.h needs linux/numa.h
+	bpf: don't open-code memdup_user()
+	bpf: Add BPF_OBJ_GET_INFO_BY_FD
+	bpf: BPF support for sock_ops
+	fixup: bpf: convert htab map to hlist_nulls
+	bpf: add initial bpf tracepoints
+	bpf: make jited programs visible in traces
+	bpf: add helper inlining infra and optimize map_array lookup
+	bpf: permits narrower load from bpf program context fields
+	bpf: possibly avoid extra masking for narrower load in verifier
+	ANDROID: net: bpf: Allow TC programs to call BPF_FUNC_skb_change_head
+	bpf: Introduce bpf_prog ID
+	bpf: Introduce bpf_map ID
+	bpf: Do per-instruction state dumping in verifier when log_level > 1.
+	bpf: add bpf_set_hash helper for tc progs
+	bpf: Add setsockopt helper function to bpf
+	bpf, net: add skb_mac_header_len helper
+	bpf: add bpf_skb_adjust_room helper
+	xdp: add bpf_redirect helper function
+	xdp: add trace event for xdp redirect
+	bpf: add bpf_redirect_map helper routine
+	xdp: Add batching support to redirect map
+	bpf: Remove unused but set variables
+	bpf: Track alignment of register values in the verifier.
+	bpf: Add strict alignment flag for BPF_PROG_LOAD.
+	bpf: allow adjusted map element values to spill
+	bpf: allow helpers access to map element values
+	bpf: allow helpers access to variable memory
+	bpf: rename ARG_PTR_TO_STACK
+	bpf: bpf_lock on kallsysms doesn't need to be irqsave
+	bpf: split check_mem_access logic for map values
+	bpf: introduce new program type for skbs on sockets
+	net: fix build error in devmap helper calls
+	bpf: fix overflow in prog accounting
+	Revert "bpf: Add BPF_OBJ_GET_INFO_BY_FD"
+	bpf: Add jited_len to struct bpf_prog
+	bpf: introduce BPF_PROG_TEST_RUN command
+	net: bpf: linux/signal/sched.h wasn't added, use linux/sched.h instead
+	bpf: Add BPF_(PROG|MAP)_GET_NEXT_ID command
+	bpf: Add BPF_PROG_GET_FD_BY_ID
+	bpf: Add BPF_MAP_GET_FD_BY_ID
+	bpf: Add BPF_OBJ_GET_INFO_BY_FD
+	net: Define MIN_NAPI_ID
+	bpf: simplify __is_valid_access test on cb
+	bpf: add napi_id read access to __sk_buff
+	bpf: simplify narrower ctx access
+	bpf: reset id on spilled regs in clear_all_pkt_pointers
+	bpf: export bpf_prog_inc_not_zero
+	skbuff: Function to send an skbuf on a socket
+	tcp: Scope of specified configuration
+	proto_ops: Add locked held versions of sendmsg and sendpage
+	bpf: sockmap with sk redirect support
+	fixup: bpf: Allow selecting numa node during map creation
+	bpf: sockmap, remove STRPARSER map_flags and add multi-map support
+	bpf: sockmap state change warning fix
+	bpf: don't enable preemption twice in smap_do_verdict
+	bpf: Set mac_len in bpf_skb_change_head
+	net: add notifier hooks for devmap bpf map
+	bpf: dev_map_alloc() shouldn't return NULL
+	bpf: devmap fix mutex in rcu critical section
+	bpf: devmap: remove unnecessary value size check
+	bpf: fix double free from dev_map_notification()
+	bpf: minor cleanups for dev_map
+	bpf: netdev is never null in __dev_map_flush
+	bpf: devmap, use cond_resched instead of cpu_relax
+	bpf: devmap: pass on return value of bpf_map_precharge_memlock
+	bpf: fix splat for illegal devmap percpu allocation
+	bpf: require CAP_NET_ADMIN when using devmap
+	bpf: devmap fix arithmetic overflow in bitmap_size calculation
+	bpf: properly reset caller saved regs after helper call and ld_abs/ind
+	BACKPORT: bpf: Add file mode configuration into bpf maps
+	BACKPORT: bpf: encapsulate verifier log state into a structure
+	BACKPORT: bpf: Rename bpf_verifer_log
+	BACKPORT: bpf: btf: Introduce BPF Type Format (BTF)
+	bpf: Update logging functions to work with BTF
+	bpf: btf: Validate type reference
+	bpf: btf: Check members of struct/union
+	bpf: btf: Add pretty print capability for data with BTF type info
+	BACKPORT: bpf: btf: Add BPF_BTF_LOAD command
+	bpf: btf: Add BPF_OBJ_GET_INFO_BY_FD support to BTF fd
+	BACKPORT: bpf: btf: Clean up btf.h in uapi
+	bpf: btf: Avoid WARN_ON when CONFIG_REFCOUNT_FULL=y
+	bpf: btf: Add missing refcount include
+	BACKPORT: bpf: Add name, load_time, uid and map_ids to bpf_prog_info
+	BACKPORT: bpf: Add map_name to bpf_map_info
+	bpf: Change bpf_obj_name_cpy() to better ensure map's name is init by 0
+	bpf: Fix compiler warning on info.map_ids for 32bit platform
+	bpf: btf: Change how section is supported in btf_header
+	bpf: btf: Check array->index_type
+	bpf: btf: Remove unused bits from uapi/linux/btf.h
+	bpf: btf: Avoid variable length array
+	bpf: btf: avoid -Wreturn-type warning
+	bpf: btf: Check array t->size
+	bpf: btf: Ensure t->type == 0 for BTF_KIND_FWD
+	bpf: btf: Fix bitfield extraction for big endian
+	bpf: btf: Clean up BTF_INT_BITS() in uapi btf.h
+	bpf: btf: Ensure the member->offset is in the right order
+	bpf: btf: Fix end boundary calculation for type section
+	bpf: btf: Fix a missing check bug
+	bpf, btf: fix a missing check bug in btf_parse
+	bpf/btf: Fix BTF verification of enum members in struct/union
+	bpf: btf: fix truncated last_member_type_id in btf_struct_resolve
+	bpf: fix subprog verifier bypass by div/mod by 0 exception
+	bpf: Fix 32 bit src register truncation on div/mod
+	bpf: Fix truncation handling for mod32 dst reg wrt zero
+	BACKPORT: bpf: Use char in prog and map name
+	UPSTREAM: net: bpf: Make bpf_ktime_get_ns() available to non GPL programs
+	BACKPORT: bpf: add bpf_ktime_get_boot_ns()
+	net: Allow sk_filter to access get_socket*
+	Add uid and cookie bpf helper to cg_skb_func_proto
+	bpf: remove cg_skb_func_proto and use sk_filter_func_proto directly
+	bpf: drop unnecessary context cast from BPF_PROG_RUN
+	ipv6: move stub initialization after ipv6 setup completion
+	bpf: Add mark and priority to sock options that can be set
+	BACKPORT: bpf: add skb_load_bytes_relative helper
+	BACKPORT: net: bpf: rename ndo_xdp to ndo_bpf
+	BACKPORT: bpf: offload: add infrastructure for loading programs for a specific netdev
+	bpf: offload: rename the ifindex field
+	BACKPORT: bpf: Check attach type at prog load time
+	BACKPORT: bpf: introduce BPF_PROG_QUERY command
+	BACKPORT: bpf: Hooks for sys_bind
+	BACKPORT: net: Introduce __inet_bind() and __inet6_bind
+	tcp: Add the VNet MPTCP macro to reduce symbol table pollution and potential naming conflicts
+	BACKPORT: bpf: Hooks for sys_connect
+	BACKPORT: bpf: Post-hooks for sys_bind
+	net: inet needs addrconf.h include
+	bpf: Fix incompatible function pointer
+	bpf: Remove MTU check in __bpf_skb_max_len
+	bpf: Fix incompatible function poniter
+	syscall: Fake uname to 4.19 for bpfloader/netd
+	syscall: Fake uname to 4.19 also for netbpfload
+	syscall: Increase bpf fake uname to 4.19.236
+	net: strparser: Compile by default
+	bpf, lpm: Fix check prefixlen before walking trie
+	trace: add variant without spacing in trace_print_hex_seq
+	bpf: allow bpf_get_current_uid_gid_proto also for networking
+	bpf: fix unlocking of jited image when module ronx not set
+	bpf, x86_64/arm64: remove old ldimm64 artifacts from jits
+	bpf, arm64: implement jiting of BPF_XADD
+	bpf, arm64: use separate register for state in stxr
+	bpf, arm64: take advantage of stack_depth tracking
+	arm64: fix endianness annotation for 'struct jit_ctx' and friends
+	bpf, arm64: implement jiting of BPF_J{LT, LE, SLT, SLE}
+	bpf, arm64: fix stack_depth tracking in combination with tail calls
+	bpf, arm64: remove prefetch insn in xadd mapping
+	bpf, arm64: use more scalable stadd over ldxr / stxr loop in xadd
+	ANDROID: arm64: bpf: implement arch_bpf_jit_check_func
+	backport: Compatible with k4.9 kernel (1/2)
+	f2fs: Resolve naming conflicts
+	bpf: Change the return value of bpf_prog
+	bpf, mlx4: fix prog refcount in mlx4_en_try_alloc_resources error path
+	fixup! Add a helper function to get socket cookie in eBPF
+	fixup! Add a eBPF helper function to retrieve socket uid
+	fixup! ebpf: allow bpf_get_current_uid_gid_proto also for networking
+	bpf: split bpf core interpreter
+	bpf: reconcile bpf_tail_call and stack_depth
+	bpf: track stack depth of classic bpf programs
+	bpf: use different interpreter depending on required stack size
+	bpf: Add syscall lookup support for fd array and htab
+	bpf: Fix out-of-bound access on interpreters[]
+	tcp: Add a new tcpsulp_ops structure
+	tcp: Function for sending SYN-ACK packets
+	bpf: Support for per connection SYN/SYN-ACK RTOs
+	tcp: Add new parameters to the tcp_set_initial-window function
+	bpf: Support for setting initial receive window
+	bpf: Add TCP connection BPF callbacks
+	bpf: Add support for changing congestion control
+	bpf: Adds support for setting initial cwnd
+	bpf: Adds support for setting sndcwnd clamp
+	bpf: fix to bpf_setsockops
+	bpf: add missing break in for the TCP_BPF_SNDCWND_CLAMP case
+	bpf: don't indicate success when copy_from_user fails
+	bpf: fix bpf_prog_get_info_by_fd to dump correct xlated_prog_len
+	net: comment fixes against BPF devmap helper calls
+	bpf: Delete the bpf_verifier.vlog function
+	Revert "BACKPORT: bpf: Delete the bpf_verifier.vlog function"
+	Revert "BACKPORT: net: bpf: rename ndo_xdp to ndo_bpf"
+	Revert "bpf: Update logging functions to work with BTF"
+	Revert "BACKPORT: bpf: Rename bpf_verifer_log"
+	BACKPORT: bpf: Remove BPF/verifier validator and reference tnum numeric type tracking
+	Revert: bpf/verifier Validator
+	bpf/verifier: rework value tracking
+	bpf/verifier: track signed and unsigned min/max values
+	bpf/verifier: more concise register state logs for constant var_off
+	bpf: Move check_uarg_tail_zero() upward
+	bpf: Extend check_uarg_tail_zero() checks
+	bpf: enable BPF_J{LT, LE, SLT, SLE} opcodes in verifier
+	bpf/verifier: track liveness for pruning
+	bpf: add access to sock fields and pkt data from sk_skb programs
+	bpf: Submit net_device type
+	bpf: sock_map fixes for !CONFIG_BPF_SYSCALL and !STREAM_PARSER
+	bpf: Add a new BPF_MAPTYPE_deVMAP-HASH mapping type
+	bpf: Add a new mapping type
+	tcp: Uninstall the tcp-ulistendrop static inline function
+	bpf: no need to nullify ri->map in xdp_do_redirect
+	bpf: reuse tc bpf prologue for sk skb progs
+	bpf: Use different functions to find devices (fwd) associated with a given index
+	bpf: Add the xdp_do_generic_dedirect function
+	xdp: adjust xdp redirect tracepoint to include return error code
+	bpf: Fix map-in-map checking in the verifier
+	bpf: fix a return in sockmap_get_from_fd()
+	bpf: make htab inlining more robust wrt assumptions
+	bpf: inline map in map lookup functions for array and htab
+	bpf: fix map value attribute for hash of maps
+	bpf: misc xdp redirect cleanups
+	bpf: Check if the value of state ->spilled_regs [i]. live is equal to REG_LIVEREAD
+	bpf: Check if the value at a specific position in the parent ->stack_stot_datrix array is not equal to the value of STACK-SPILL
+	bpf: Check if the value at a specific position of the stack_stot_datrix array in the parent structure is not equal to STACK-SPILL
+	bpf: Update the live member of a certain element in the spidled-regs array of the parent structure
+	bpf/verifier: when pruning a branch, ignore its write marks
+	bpf/verifier: remove varlen_map_value_access flag
+	bpf/verifier: document liveness analysis
+	xdp: remove bpf_warn_invalid_xdp_redirect
+	bpf: Add a new function
+	bpf: Define the prototype of xdp_do_generic_dedirect function
+	xdp: make generic xdp redirect use tracepoint trace_xdp_redirect
+	xdp: remove net_device names from xdp_redirect tracepoint
+	xdp: get tracepoints xdp_exception and xdp_redirect in sync
+	bpf: fix bpf_setsockopts return value
+	tcp: fix refcnt leak with ebpf congestion control
+	bpf: fix oops on allocation failure
+	bpf: convert sockmap field attach_bpf_fd2 to type
+	bpf: sockmap add missing rcu_read_(un)lock in smap_data_ready
+	bpf: harden sockmap program attach to ensure correct map type
+	bpf: sockmap indicate sock events to listeners
+	bpf: sockmap requires STREAM_PARSER add Kconfig entry
+	xdp: remove redundant argument to trace_xdp_redirect
+	xdp: tracepoint xdp_redirect also need a map argument
+	xdp: make xdp tracepoints report bpf prog id instead of prog_tag
+	xdp: separate xdp_redirect tracepoint in error case
+	xdp: separate xdp_redirect tracepoint in map case
+	bpf: Add mark and priority to sock options that can be set
+	bpf: Allow cgroup sock filters to use get_current_uid_gid helper
+	bpf: sockmap update/simplify memory accounting scheme
+	bpf: don't select potentially stale ri->map from buggy xdp progs
+	xdp: implement xdp_redirect_map for generic XDP
+	bpf: add support for sockmap detach programs
+	bpf: Use the static_key_ferse macro to check the value of the static key generic_xdp-needed
+	bpf: Remove spaces
+	bpf: Restore spaces
+	bpf: Define the ret of type int
+	bpf: Restore int type ret
+	bpf: Add XDP annotation
+	bpf: Remove Spaces
+	bpf: Remove occupied spaces
+	net: rcu lock and preempt disable missing around generic xdp
+	tcp: remove two unused functions
+	bpf: do not disable/enable BH in bpf_map_free_id()
+	net: change skb->mac_header when Generic XDP calls adjust_head
+	bpf: fix ri->map_owner pointer on bpf_prog_realloc
+	bpf: rename bpf_compute_data_end into bpf_compute_data_pointers
+	bpf: add meta pointer for direct access
+	bpf/verifier: improve disassembly of BPF_END instructions
+	bpf/verifier: improve disassembly of BPF_NEG instructions
+	bpf: enforce return code for cgroup-bpf programs
+	bpf: Remove unused functions
+	bpf: fix liveness marking
+	bpf: Append prog->aux->name in bpf_get_prog_name()
+	bpf: move global verifier log into verifier environment
+	bpf: move instruction printing into a separate file
+	bpf: Add METADATA-IP_TUNNEL tag
+	bpf: Add md_dest pointer and return value NULL
+	bpf: Add metadata_dst_alloc_percpu function
+	bpf: *Add a new parameter to metadata_dast_allo
+	bpf: don't rely on the verifier lock for metadata_dst allocation
+	bpf: write back the verifier log buffer as it gets filled
+	net: dst: move cpu inside ifdef to avoid compilation warning
+	bpf: disallow arithmetic operations on context pointer
+	bpf: fix off by one for range markings with L{T, E} patterns
+	bpf: fix pattern matches for direct packet access
+	bpf: reduce verifier memory consumption
+	bpf: fix verifier memory leaks
+	bpf: also improve pattern matches for meta access
+	bpf: fix verifier NULL pointer dereference
+	bpf: split verifier and program ops
+	bpf: remove the verifier ops from program structure
+	bpf: move knowledge about post-translation offsets out of verifier
+	bpf: fix link error without CONFIG_NET
+	bpf: fix out-of-bounds access warning in bpf_check
+	bpf: allow access to skb->len from offloads
+	bpf: enforce TCP only support for sockmap
+	bpf: avoid preempt enable/disable in sockmap using tcp_skb_cb region
+	bpf: remove mark access for SK_SKB program types
+	bpf: require CAP_NET_ADMIN when using sockmap maps
+	bpf: add support for BPF_SOCK_OPS_BASE_RTT
+	bpf: Adding helper function bpf_getsockops
+	bpf: Add BPF_SOCKET_OPS_BASE_RTT support to tcp_nv
+	tcp: do tcp_mstamp_refresh before retransmits on TSQ handler
+	Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/net
+	tcp: refresh tp timestamp before tcp_mtu_probe()
+	bpf: bpf_compute_data uses incorrect cb structure
+	bpf: rename sk_actions to align with bpf infrastructure
+	bpf: remove SK_REDIRECT from UAPI
+	bpf: report offload info to user space
+	bpf: remove old offload/analyzer
+	tcp: fix tcp_fastretrans_alert warning
+	bpf: offload: add comment warning developers about double destroy
+	bpf: offload: limit offload to cls_bpf and xdp programs only
+	net: xdp: don't allow device-bound programs in driver mode
+	bpf: offload: ignore namespace moves
+	bpf: revert report offload info to user space
+	bpf: make bpf_prog_offload_verifier_prep() static inline
+	bpf: introduce ARG_PTR_TO_MEM_OR_NULL
+	bpf: change bpf_probe_read_str arg2 type to ARG_CONST_SIZE_OR_ZERO
+	bpf: change bpf_perf_event_output arg5 type to ARG_CONST_SIZE_OR_ZERO
+	bpf: offload: add a license header
+	trace/xdp: fix compile warning: 'struct bpf_map' declared inside parameter list
+	bpf: set maximum number of attached progs to 64 for a single perf tp
+	bpf: fix stack state printing in verifier log
+	bpf: print liveness info to verifier log
+	bpf: don't mark FP reg as uninit
+	bpf: improve verifier liveness marks
+	bpf: improve JEQ/JNE path walking
+	bpf: cleanup register_is_null()
+	bpf: Add access to snd_cwnd and others in sock_ops
+	bpf: move bpf csum flag check
+	xdp: linearize skb in netif_receive_generic_xdp()
+	bpf: introduce function calls (function boundaries)
+	bpf: introduce function calls (verification)
+	bpf: teach verifier to recognize zero initialized stack
+	bpf: add support for bpf_call to interpreter
+	bpf: Change the return orig_fp value to fp
+	bpf: fix net.core.bpf_jit_enable race
+	bpf: x64: add JIT support for multi-function programs
+	bpf: Jump tag to out
+	bpf: Check if prog is a classic BPF program
+	bpf: arm64: add JIT support for multi-function programs
+	bpf: fix spelling mistake: "funcation"-> "function"
+	bpf: make function skip_callee static and return NULL rather than 0
+	bpf: arm64: fix uninitialized variable
+	bpf/verifier: fix bounds calculation on BPF_RSH
+	bpf: fix incorrect sign extension in check_alu_op()
+	bpf: fix incorrect tracking of register size truncation
+	bpf: fix 32-bit ALU op verification
+	bpf: fix missing error return in check_stack_boundary()
+	bpf: force strict alignment checks for stack pointers
+	bpf: don't prune branches when a scalar is replaced with a pointer
+	bpf: fix integer overflows
+	bpf: do not allow root to mangle valid pointers
+	bpf: fix kallsyms handling for subprogs
+	bpf: allow for correlation of maps and helpers in dump
+	bpf: fix stacksafe exploration when comparing states
+	bpf: fix maximum stack depth tracking logic
+	bpf: fix max call depth check
+	bpf: offload: don't require rtnl for dev list manipulation
+	bpf: offload: don't use prog->aux->offload as boolean
+	bpf: offload: allow netdev to disappear while verifier is running
+	bpf: offload: free prog->aux->offload when device disappears
+	bpf: offload: free program id when device disappears
+	nsfs: generalize ns_get_path() for path resolution with a task
+	bpf: offload: report device information for offloaded programs
+	xdp: base API for new XDP rx-queue info concept
+	xdp/qede: setup xdp_rxq_info and intro xdp_rxq_info_is_reg
+	xdp: generic XDP handling of xdp_rxq_info
+	bpf: finally expose xdp_rxq_info to XDP bpf-programs
+	bpf: only build sockmap with CONFIG_INET
+	bpf: implement syscall command BPF_MAP_GET_NEXT_KEY for stacktrace map
+	bpf: sockmap missing NULL psock check
+	bpf: Elem_size rounded up
+	bpf: Insert a conditional jump instruction that checks if ret is greater than or equal to map
+	bpf: Remove unnecessary jumps
+	fixup! bpf: prevent out-of-bounds speculation
+	bpf: fix verifier GPF in kmalloc failure path
+	bpf: avoid false sharing of map refcount with max_entries
+	bpf: fix spelling mistake: "obusing" -> "abusing"
+	bpf: export function to write into verifier log buffer
+	bpf: simplify xdp_convert_ctx_access for xdp_rxq_info
+	Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/net
+	bpf: add map_alloc_check callback
+	bpf: Loose judgment criteria
+	bpf: Add spaces
+	bpf: hashtab: move attribute validation before allocation
+	bpf: hashtab: move checks out of alloc function
+	bpf: add helper for copying attrs to struct bpf_map
+	bpf: rename bpf_dev_offload -> bpf_prog_offload
+	bpf: offload: factor out netdev checking at allocation time
+	bpf: offload: add map offload infrastructure
+	fixup! bpf: reject stores into ctx via st and xadd
+	bpf: offload: make bpf_offload_dev_match() reject host+host case
+	bpf: annotate bpf_insn_print_t with __printf
+	bpf: add new jited info fields in bpf_dev_offload and bpf_prog_info
+	bpf: change fake_ip for bpf_trace_printk helper
+	bpf: add comments to BPF ld/ldx sizes
+	bpf: allow socket_filter programs to use bpf_prog_test_run
+	bpf: Simple judgment criteria
+	bpf: arraymap: move checks out of alloc function
+	bpf: arraymap: use bpf_map_init_from_attr()
+	bpf: offload: allow array map offload
+	bpf: offload: report device information about offloaded maps
+	bpf: implement MAP_GET_NEXT_KEY command for LPM_TRIE map
+	bpf, verifier: detect misconfigured mem, size argument pair
+	bpf: add csum_diff helper to xdp as well
+	fixup! bpf: get rid of pure_initcall dependency to enable jits
+	bpf: add upper complexity limit to verifier log
+	bpf: move event_output to const_size_or_zero for xdp/skb as well
+	bpf: Use the IS_FD_ARRAY() macro in map_update_elem()
+	bpf: Make SOCK_OPS_GET_TCP size independent
+	bpf: Make SOCK_OPS_GET_TCP struct independent
+	bpf: Add write access to tcp_sock and sock fields
+	bpf: Using the tcp_init_transfer function to make TCP connections more efficient in utilizing network resources
+	bpf: Support passing args to sock_ops bpf function
+	bpf: Adds field bpf_sock_ops_cb_flags to tcp_sock
+	bpf: The expired variable stores the return value of the backtansmits_timed_out function
+	bpf: Remove Spaces
+	bpf: Add sock_ops RTO callback
+	bpf: Remove offset macro
+	bpf: Add support for reading sk_state and more
+	bpf: Add sock_ops R/W access to tclass
+	bpf: Add BPF_SOCK_OPS_RETRANS_CB
+	bpf: Add BPF_SOCK_OPS_STATE_CB
+	bpf: xor of a/x in cbpf can be done in 32 bit alu
+	bpf: improve dead code sanitizing
+	bpf: make unknown opcode handling more robust
+	bpf: fix null pointer deref in bpf_prog_test_run_xdp
+	Add spaces
+	bpf: Define the enumeration value TCP-ULP_TLS in enum
+	bpf: sockmap, add sock close() hook to remove socks
+	bpf: sockmap, fix leaking maps with attached but not detached progs
+	bpf: fix sock_map_alloc() error path
+	bpf: fix memory leak in lpm_trie map_free callback function
+	bpf: allow xadd only on aligned memory
+	bpf: comment why dots in filenames under BPF virtual FS are not allowed
+	bpf: extend stackmap to save binary_build_id+offset instead of address
+	sockmap: convert refcnt to an atomic refcnt
+	net: do_tcp_sendpages flag to avoid SKBTX_SHARED_FRAG
+	bpf: Add BPF_CGROUP_DEVICE with BPF_PROG_TYPE_CGROUP_DEVICE mapped value
+	bpf: Cooperate with BPF_CGROUP device to jump
+	bpf: Cooperate with BPF_PROG_TYPE_CGROUP_DEVICE device to jump
+	document: describe bpf_perf_event_read_value
+	bpf: create tcp_bpf_ulp allowing BPF to monitor socket TX/RX data
+	bpf: sockmap, add bpf_msg_apply_bytes() helper
+	bpf: sockmap, add msg_cork_bytes() helper
+	bpf: sk_msg program helper bpf_sk_msg_pull_data
+	trace/bpf: remove helper bpf_perf_prog_read_value from tracepoint type programs
+	bpf: Remove struct bpf_verifier_env argument from print_bpf_insn
+	bpf: Rename bpf_verifer_log
+	bpf: Add bpf_verifier_vlog() and bpf_verifier_log_needed()
+	bpf: sockmap redirect ingress support
+	bpf: sockmap, BPF_F_INGRESS flag for BPF_SK_SKB_STREAM_VERDICT:
+	fixup! bpf: Hooks for sys_bind
+	bpf: btf: Add pretty print support to the basic arraymap
+	bpf: Add a new parameter zero_steze_allowed
+	bpf: allow map helpers access to map values directly
+	bpf: Introducing the bpf_prog_g_ok function
+	bpf: Pass the boolean kern type to inet_csk.accept
+	bpf: unify main prog and subprog
+	bpf: centre subprog information fields
+	bpf: add faked "ending" subprog
+	bpf: prefix cbpf internal helpers with bpf_
+	bpf: Add Add the bpf_perf_ event value enumeration value
+	bpf: btf: Introduce BTF ID
+	bpf: btf: Add struct bpf_btf_info
+	bpf: Add Help merge
+	bpf: Move the tcp_ulc_ops member upwards
+	bpf: Add a new function
+	bpf: sockmap, refactor sockmap routines to work with hashmap
+	bpf: The bpf_prog_ get_type_dev function passes the boolean attach-d rv type parameter
+	bpf: sockmap, add hash map support
+	bpf: fix sock hashmap kmalloc warning
+	bpf: sockmap, on update propagate errors back to userspace
+	bpf: sockmap, fix double-free
+	bpf: sockmap update rollback on error can incorrectly dec prog refcnt
+	bpf: parse and verdict prog attach may race with bpf map update
+	bpf: allow sk_msg programs to read sock fields
+	bpf: btf: Rename btf_key_id and btf_value_id in bpf_map_info
+	bpf: Expose check_uarg_tail_zero()
+	bpf: properly enforce index mask to prevent out-of-bounds speculation
+	bpf: Define cgroup_bpf_enabled for CONFIG_CGROUP_BPF=n
+	tcp: Introducing the tcp_ulp function
+	bpf: hide the unused 'off' variable
+	bpf: fix uapi hole for 32 bit compat applications
+	bpf: test case for map pointer poison with calls/branches
+	bpf: fixup error message from gpl helpers on license mismatch
+	bpf: show prog and map id in fdinfo
+	bpf: avoid retpoline for lookup/update/delete calls on maps
+	bpf: add bpf_skb_cgroup_id helper
+	bpf: make sure to clear unused fields in tunnel/xfrm state fetch
+	bpf: fix context access in tracing progs on 32 bit archs
+	bpf: implement bpf_get_current_cgroup_id() helper
+	bpf: guard bpf_get_current_cgroup_id() with CONFIG_CGROUPS
+	bpf: reject passing modified ctx to helper functions
+	bpf: fix panic in prog load calls cleanup
+	bpf: fix attach type BPF_LIRC_MODE2 dependency wrt CONFIG_CGROUP_BPF
+	bpf: sockmap, fix crash when ipv6 sock is added
+	bpf: sockmap, fix smap_list_map_remove when psock is in many maps
+	bpf: sockhash fix omitted bucket lock in sock_close
+	bpf: sockhash, add release routine
+	bpf: sockmap, error path can not release psock in multi-map case
+	bpf: sockmap, hash table is RCU so readers do not need locks
+	Revert "bpf: Remove MTU check in __bpf_skb_max_len"
+	bpf: fix sk_skb programs without skb->dev assigned
+	bpf: sockhash, disallow bpf_tcp_close and update in parallel
+	bpf: sockmap, consume_skb in close path
+	bpf: sockmap, convert bpf_compute_data_pointers to bpf_*_sk_skb
+	bpf: don't leave partial mangled prog in jit_subprogs error path
+	bpf: Support bpf_get_socket_cookie in more prog types
+	bpf: verifier: MOV64 don't mark dst reg unbounded
+	bpf: add ability to charge bpf maps memory dynamically
+	bpf, sockmap: fix bpf_tcp_sendmsg sock error handling
+	bpf, sockmap: fix leak in bpf_tcp_sendmsg wait for mem path
+	bpf, sockmap: fix sock_hash_alloc and reject zero-sized keys
+	bpf, sockmap: fix sock hash count in alloc_sock_hash_elem
+	device_cgroup: add DEVCG_ prefix to ACC_* and DEV_* constants
+	device_cgroup: prepare code for bpf-based device controller
+	bpf, cgroup: implement eBPF-based device controller for cgroup v2
+	bpf: introduce cgroup storage maps
+	bpf: pass a pointer to a cgroup storage using pcpu variable
+	bpf: allocate cgroup storage entries on attaching bpf programs
+	bpf/cgroup: fix a verification error for a CGROUP_DEVICE type prog
+	bpf: introduce update_effective_progs()
+	bpf: extend bpf_prog_array to store pointers to the cgroup storage
+	bpf/verifier: introduce BPF_PTR_TO_MAP_VALUE
+	bpf: don't allow create maps of cgroup local storages
+	bpf: introduce the bpf_get_local_storage() helper function
+	bpf: fix bpffs non-array map seq_show issue
+	bpf: btf: add pretty print for hash/lru_hash maps
+	bpf: sockmap, map_release does not hold refcnt for pinned maps
+	bpf: decouple btf from seq bpf fs dump and enable more maps
+	bpf: sockmap, duplicates release calls may NULL sk_prot
+	bpf: sockmap, sk_wait_event needed to handle blocking cases
+	bpf: sockmap, fix double page_put on ENOMEM error in redirect path
+	bpf: sockmap, fix scatterlist update on error path in send with apply
+	bpf: sockmap, zero sg_size on error when buffer is released
+	bpf: sockmap, fix error handling in redirect failures
+	bpf: clear the ip_tunnel_info.
+	bpf, sockmap: fix leakage of smap_psock_map_entry
+	bpf, sockmap: fix sock_map_ctx_update_elem race with exist/noexist
+	bpf/verifier: per-register parent pointers
+	bpf, sockmap: fix potential use after free in bpf_tcp_close
+	bpf, sockmap: fix psock refcount leak in bpf_tcp_recvmsg
+	bpf: sockmap, decrement copied count correctly in redirect error case
+	bpf: fix several offset tests in bpf_msg_pull_data
+	bpf: fix msg->data/data_end after sg shift repair in bpf_msg_pull_data
+	bpf: fix shift upon scatterlist ring wrap-around in bpf_msg_pull_data
+	bpf: fix sg shift repair start offset in bpf_msg_pull_data
+	bpf: add bpffs pretty print for percpu arraymap/hash/lru_hash
+	bpf: add TCP_SAVE_SYN/TCP_SAVED_SYN options for bpf_(set|get)sockopt
+	bpf: avoid misuse of psock when TCP_ULP_BPF collides with another ULP
+	bpf: Fix bpf_msg_pull_data()
+	bpf/verifier: fix verifier instability
+	bpf/verifier: disallow pointer subtraction
+	bpf: use __GFP_COMP while allocating page
+	bpf: sockmap, fix transition through disconnect without close
+	bpf: sockmap only allow ESTABLISHED sock state
+	bpf: permit CGROUP_DEVICE programs accessing helper bpf_get_current_cgroup_id()
+	bpf: Add iterator for spilled registers
+	bpf: Simplify ptr_min_max_vals adjustment
+	bpf: Reuse canonical string formatter for ctx errs
+	bpf: Generalize ptr_or_null regs check
+	bpf: Add PTR_TO_SOCKET verifier type
+	bpf: Macrofy stack state copy
+	bpf: Add reference tracking to verifier
+	bpf: Add helper to retrieve socket in BPF
+	bpf, doc: Update bpf_jit_enable limitation for CONFIG_BPF_JIT_ALWAYS_ON
+	bpf: 32-bit RSH verification must truncate input before the ALU op
+	bpf: error handling when map_lookup_elem isn't supported
+	bpf: return EOPNOTSUPP when map lookup isn't supported
+	net: fix generic XDP to handle if eth header was mangled
+	bpf: rename stack trace map operations
+	bpf/syscall: allow key to be null in map functions
+	bpf/verifier: add ARG_PTR_TO_UNINIT_MAP_VALUE
+	bpf: add queue and stack maps
+	bpf: add MAP_LOOKUP_AND_DELETE_ELEM syscall
+	bpf: add cg_skb_is_valid_access for BPF_PROG_TYPE_CGROUP_SKB
+	bpf: remove unused variable
+	bpf, verifier: fix register type dump in xadd and st
+	bpf: disallow direct packet access for unpriv in cg_skb
+	bpf: fix cg_skb types to hint access type in may_access_direct_pkt_data
+	bpf: fix direct packet write into pop/peek helpers
+	bpf: fix leaking uninitialized memory on pop/peek helpers
+	bpf: make direct packet write unclone more robust
+	bpf: Extend the sk_lookup() helper to XDP hookpoint.
+	bpf: fix partial copy of map_ptr when dst is scalar
+	bpf: don't set id on after map lookup with ptr_to_map_val return
+	bpf: get kernel symbol addresses via syscall
+	bpf: fix bpf_prog_get_info_by_fd to return 0 func_lens for unpriv
+	bpf: fix multi-function JITed dump obtained via syscall
+	bpf: get JITed image lengths of functions via syscall
+	kernel/bpf/syscall: fix warning defined but not used
+	bpf: show real jited prog address in /proc/kallsyms
+	bpf: show real jited address in bpf_prog_info->jited_ksyms
+	bpf: show main program address and length in bpf_prog_info
+	bpf: add perf event notificaton support for sock_ops
+	bpf: let verifier to calculate and record max_pkt_offset
+	bpf: Support socket lookup in CGROUP_SOCK_ADDR progs
+	bpf: Allow narrow loads with offset > 0
+	bpf: allocate local storage buffers using GFP_ATOMIC
+	bpf: fix off-by-one error in adjust_subprog_starts
+	bpf: btf: Break up btf_type_is_void()
+	bpf: btf: Add BTF_KIND_FUNC and BTF_KIND_FUNC_PROTO
+	bpf: Introduce bpf_func_info
+	bpf: fix a compilation error when CONFIG_BPF_SYSCALL is not defined
+	bpf: fix integer overflow in queue_stack_map
+	bpf: btf: support proper non-jit func info
+	bpf, ppc64: generalize fetching subprog into bpf_jit_get_func_addr
+	bpf, arm64: fix getting subprog addr from aux for calls
+	bpf, arm64: optimize 32/64 immediate emission
+	arm64/bpf: use movn/movk/movk sequence to generate kernel addresses
+	bpf: Support sk lookup in netns with id 0
+	bpf: fix pointer offsets in context for 32 bit
+	bpf: Add BPF_F_ANY_ALIGNMENT.
+	bpf: Fix memleak in aux->func_info and aux->btf
+	bpf: allow BPF read access to qdisc pkt_len
+	bpf: fix documentation for eBPF helpers
+	bpf: improve verifier branch analysis
+	bpf: add per-insn complexity limit
+	tcp: Do not underestimate rwnd_limited
+	bpf: Improve the info.func_info and info.func_info_rec_size behavior
+	bpf: Change insn_offset to insn_off in bpf_func_info
+	tcp: lack of available data can also cause TSO defer
+	bpf: relax verifier restriction on BPF_MOV | BPF_ALU
+	bpf: Add bpf_line_info support
+	bpf: clean up bpf_prog_get_info_by_fd()
+	bpf: rename *_info_cnt to nr_*_info in bpf_prog_info
+	bpf: Remove bpf_dump_raw_ok() check for func_info and line_info
+	bpf: verifier: make sure callees don't prune with caller differences
+	bpf: Create a new btf_name_by_offset() for non type name use case
+	bpf: verbose log bpf_line_info in verifier
+	bpf: speed up stacksafe check
+	bpf: improve stacksafe state comparison
+	bpf: add self-check logic to liveness analysis
+	bpf: remove useless version check for prog load
+	bpf: btf: refactor btf_int_bits_seq_show()
+	bpf: btf: fix struct/union/fwd types with kind_flag
+	bpf: move {prev_,}insn_idx into verifier env
+	bpf: move tmp variable into ax register in interpreter
+	bpf: enable access to ax register also from verifier rewrite
+	bpf: restrict map value pointer arithmetic for unprivileged
+	bpf: restrict stack pointer arithmetic for unprivileged
+	bpf: restrict unknown scalars of mixed signed bounds for unprivileged
+	bpf: fix check_map_access smin_value test when pointer contains offset
+	bpf: prevent out of bounds speculation on pointer arithmetic
+	bpf: fix sanitation of alu op with pointer / scalar type from different paths
+	bpf: fix panic in stack_map_get_build_id() on i386 and arm32
+	bpf: correctly set initial window on active Fast Open sender
+	bpf: fix bpffs bitfield pretty print
+	bpf: in __bpf_redirect_no_mac pull mac only if present
+	bpf: bpf_setsockopt: reset sock dst on SO_MARK changes
+	bpf: Make function btf_name_offset_valid static
+	bpf: Annotate implicit fall through in cgroup_dev_func_proto
+	bpf: Correctly annotate implicit fall through in bpf_base_func_proto
+	bpf: don't assume build-id length is always 20 bytes
+	bpf: zero out build_id for BPF_STACK_BUILD_ID_IP
+	bpf: fix inner map masking to prevent oob under speculation
+	perf: Prevent passing zero nr_pages to rb_alloc_aux()
+	perf: Add PERF_RECORD_NAMESPACES to include namespaces related info
+	perf, bpf: Introduce PERF_RECORD_KSYMBOL
+	perf, bpf: Introduce PERF_RECORD_BPF_EVENT
+	bpf: Add module name [bpf] to ksymbols for bpf programs
+	bpf: fix SO_MAX_PACING_RATE to support TCP internal pacing
+	bpf: sock recvbuff must be limited by rmem_max in bpf_setsockopt()
+	bpf: run bpf programs with preemption disabled
+	bpf: fix lockdep false positive in percpu_freelist
+	bpf: Fix syscall's stackmap lookup potential deadlock
+	bpf: introduce bpf_spin_lock
+	bpf: add support for bpf_spin_lock to cgroup local storage
+	bpf: introduce BPF_F_LOCK flag
+	bpf: Fix narrow load on a bpf_sock returned from sk_lookup()
+	bpf: Add a bpf_sock pointer to __sk_buff and a bpf_sk_fullsock helper
+	bpf: Add state, dst_ip4, dst_ip6 and dst_port to bpf_sock
+	bpf: Refactor sock_ops_convert_ctx_access
+	bpf: Add struct bpf_tcp_sock and BPF_FUNC_tcp_sock
+	bpf: change prototype for stack_map_get_build_id_offset
+	bpf: enable stackmap with build_id in nmi context
+	bpf: avoid -Wmaybe-uninitialized warning
+	bpf: fix lockdep false positive in stackmap
+	bpf: decrease usercnt if bpf_map_new_fd() fails in bpf_map_get_fd_by_id()
+	bpf: drop refcount if bpf_map_new_fd() fails in map_create()
+	bpf: set inner_map_meta->spin_lock_off correctly
+	bpf: Add base proto function for cgroup-bpf programs
+	bpf: Fix bpf_tcp_sock and bpf_sk_fullsock issue related to bpf_sk_release
+	bpf: Add bpf_get_listener_sock(struct bpf_sock *sk) helper
+	bpf: do not restore dst_reg when cur_state is freed
+	bpf: Sysctl hook
+	bpf: Introduce bpf_sysctl_get_name helper
+	bpf: Introduce bpf_sysctl_get_current_value helper
+	bpf: fix replace_map_fd_with_map_ptr's ldimm64 second imm field
+	bpf: Introduce bpf_sysctl_{get,set}_new_value helpers
+	bpf: Add file_pos field to bpf_sysctl ctx
+	bpf: Only print ref_obj_id for refcounted reg
+	bpf: Introduce ARG_PTR_TO_{INT,LONG} arg types
+	bpf: Introduce bpf_strtol and bpf_strtoul helpers
+	bpf: verifier: propagate liveness on all frames
+	bpf: track references based on is_acquire_func
+	bpf: allow helpers to return PTR_TO_SOCK_COMMON
+	bpf: add skc_lookup_tcp helper
+	bpf: add syscall side map freeze support
+	bpf: add map helper functions push, pop, peek in more BPF programs
+	net: Fix missing meta data in skb with vlan packet
+	bpf: mark registers in all frames after pkt/null checks
+	bpf: Introduce bpf sk local storage
+	net: ipvlan: Fix ipvlan device tso disabled while NETIF_F_IP_CSUM is set
+	bpf: fix callees pruning callers
+	bpf: implement getsockopt and setsockopt hooks
+	bpf: add sockopt documentation
+	bpf: cgroup: Fix build error without CONFIG_NET
+	ipv4: Add lockdep condition to fix for_each_entry()
+	acpi: Use built-in RCU list checking for acpi_ioremaps list
+	tcp: fix tcp_set_congestion_control() use from bpf hook
+	bpf: always allocate at least 16 bytes for setsockopt hook
+	bpf: export bpf_map_inc_not_zero
+	bpf: support cloning sk storage on accept()
+	bpf: fix use after free in prog symbol exposure
+	kernel: bpf: devmap: Create __dev_map_alloc_node
+	bpf/stackmap: Fix deadlock with rq_lock in bpf_get_stack()
+	bpf: Fix use after free in subprog's jited symbol removal
+	bpf: Fix use after free in bpf_get_prog_name
+	bpf: Switch bpf_map ref counter to atomic64_t so bpf_map_inc() never fails
+	bpf: Convert bpf_prog refcnt to atomic64_t
+	bpf: Add mmap() support for BPF_MAP_TYPE_ARRAY
+	tcp: refine tcp_write_queue_empty() implementation
+	bpf: Fix passing modified ctx to ld/abs/ind instruction
+	net: Make sock protocol value checks more specific
+	tcp: Define IPPROTO_MPTCP
+	tcp: Add MPTCP option number
+	tcp, ulp: Add clone operation to tcp_ulp_ops
+	tcp: clear tp->delivered in tcp_disconnect()
+	core: Don't skip generic XDP program execution for cloned SKBs
+	bpf, sockmap: Let all kernel-land lookup values in SOCKMAP/SOCKHASH
+	bpf: Enable retrieval of socket cookie for bind/post-bind hook
+	bpf: Enable perf event rb output for bpf cgroup progs
+	bpf: Add netns cookie and enable it for bpf cgroup hooks
+	bpf: Allow to retrieve cgroup v1 classid from v2 hooks
+	bpf: Enable bpf cgroup hooks to retrieve cgroup v2 and ancestor id
+	bpf: Enable retrival of pid/tgid/comm from bpf cgroup hooks
+	bpf: Enable more helpers for BPF_PROG_TYPE_CGROUP_{DEVICE,SYSCTL,SOCKOPT}
+	bpf: Fix missing bpf_base_func_proto in cgroup_base_func_proto for CGROUP_NET=n
+	bpf, sk_msg: Add some generic helpers that may be useful from sk_msg
+	bpf, sk_msg: Add get socket storage helpers
+	bpf: Implement BPF ring buffer and verifier support for it
+	bpf: Fix definition of bpf_ringbuf_output() helper in UAPI comments
+	bpf: Don't return EINVAL from {get,set}sockopt when optlen > PAGE_SIZE
+	bpf: Enforce BPF ringbuf size to be the power of 2
+	tcp: return EPOLLOUT from tcp_poll only when notsent_bytes is half the limit
+	tcp: schedule EPOLLOUT after a partial sendmsg
+	tcp: Set INET_ECN_xmit configuration in tcp_reinit_congestion_control
+	bpf: Add bpf_patch_call_args prototype to include/linux/bpf.h
+	bpf: Avoid warning when re-casting __bpf_call_base into __bpf_call_base_args
+	bpf: Support PTR_TO_MEM{,_OR_NULL} register spilling
+	bpf: Fix helper bpf_map_peek_elem_proto pointing to wrong callback
+	bpf, cgroup: Fix optlen WARN_ON_ONCE toctou
+	bpf, cgroup: Fix problematic bounds check
+	bpf: Remove MTU check in __bpf_skb_max_len
+	bpf: Remove unused parameter from ___bpf_prog_run
+	bpf, ringbuf: Deny reserve of buffers larger than ringbuf
+	bpf: Prevent writable memory-mapping of read-only ringbuf pages
+	bpf: Fix ringbuf helper function compatibility
+	bpf: Fix the off-by-two error in range markings
+	bpf: Don't promote bogus looking registers after null check.
+	bpf, arm64: Clear prog->jited_len along prog->jited
+	bpf: Fix subprog names in stack traces.
+	net/ulp: prevent ULP without clone op from entering the LISTEN status
+	bpf: Drop always true do_idr_lock parameter to bpf_map_free_id
+	bpf: Don't EFAULT for getsockopt with optval=NULL
+	bpf: Don't EFAULT for {g,s}setsockopt with wrong optlen
+	net: sched: cls_u32: Undo tcf_bind_filter if u32_replace_hw_knode
+	net: sched: cls_u32: Undo refcount decrement in case update failed
+	bpf: Avoid deadlock when using queue and stack maps from NMI
+	syscall: Increase bpf fake uname to 5.4.186
+	bpf: Delete duplicate definitions
+	Revert "kernel: bpf: devmap: Create __dev_map_alloc_node"
+	backport: Compatible with k4.9 kernel (2/2)
+	locking/atomic: Add atomic_cond_read_acquire()
+	locking/barriers: Introduce smp_cond_load_relaxed() and atomic_cond_read_relaxed()
+	net: Introduce sk_clone_lock() error path routine
+	BACKPORT: cgroup: Simplify cgroup_ancestor
+	kernfs: use idr instead of ida to manage inode number
+	kernfs: implement i_generation
+	kernfs: add an API to get kernfs node from inode number
+	kernfs: introduce kernfs_node_id
+	tcp: reduce POLLOUT events caused by TCP_NOTSENT_LOWAT
+	idr: add idr_get_cursor() / idr_set_cursor() APIs
+	tcp: instrument how long TCP is limited by receive window
+	net: ipv4: add second dif to inet socket lookups
+	tcp: instrument tcp sender limits chronographs
+	net: ipv6: add second dif to inet6 socket lookups
+	treewide: Rename rcu_dereference_raw_notrace() to _check()
+	rcu: Speed up calling of RCU tasks callbacks
+	stop using '%pK' for /proc/kallsyms pointer values
+	/proc/module: use the same logic as /proc/kallsyms for address exposure
+	rcu: Add support for consolidated-RCU reader checking
+	BACKPORT: bpf/tracing: allow user space to query prog array on the same tp
+	bpf/tracing: fix kernel/events/core.c compilation error
+	apparmor: add per cpu work buffers to avoid allocating buffers at every hook
+	macro: introduce COUNT_ARGS() macro
+	f2fs: macro: Switch to COUNT_ARGS macro
+	msm: sde: remove unusable tracing
+	BACKPORT: bpf: introduce BPF_RAW_TRACEPOINT
+	bpf: add writable context for raw tracepoints
+	BACKPORT: flow_dissector: implements flow dissector BPF hook
+	bpf: introduce new bpf cpu map type BPF_MAP_TYPE_CPUMAP
+	bpf: include errno.h from bpf-cgroup.h
+	bpf: extend cgroup bpf core to allow multiple cgroup storage types
+	bpf: introduce per-cpu cgroup local storage
+	bpf: pass struct btf pointer to the map_check_btf() callback
+	bpf: add bpffs pretty print for cgroup local storage maps
+	bpf: fix kernel page fault in lpm map trie_get_next_key
+	bpf: Fix exact match conditions in trie_get_next_key()
+	BACKPORT: bpf: Fix out-of-bounds write in trie_get_next_key()
+	bpf: lpm_trie: check left child of last leftmost node for NULL
+	Backport new vmalloc for "large performance benefits"
+	BACKPORT: tcp: internal implementation for pacing
+	BACKPORT: tcp: tsq: add tsq_flags / tsq_enum
+
+conflicts, manually rebased
+	tcp: instrument tcp sender limits chronographs
