@@ -296,6 +296,20 @@ struct mount_entry {
 };
 LIST_HEAD(mount_list);
 
+#define CUSTOM_CMD1 0x11001 // add to list
+#define CUSTOM_CMD2 0x11002 // destroy list
+#define CUSTOM_CMD3 0x11003 // skip rwxp enable
+#define CUSTOM_CMD4 0x11004 // skip rwxp disable
+
+struct string_entry {
+    char *string;
+    struct list_head list;
+};
+LIST_HEAD(string_list);
+
+atomic_t skip_rwxp = ATOMIC_INIT(0);
+EXPORT_SYMBOL(skip_rwxp); 
+
 LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 		     unsigned long arg4, unsigned long arg5)
 {
@@ -328,6 +342,77 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long 
 	pr_info("option: 0x%x, cmd: %ld\n", option, arg2);
 #endif
 	
+	if (arg2 == CUSTOM_CMD1) {
+		struct string_entry *new_entry, *entry;
+		char buf[64];
+		memzero_explicit(buf, 64);
+	
+		if (copy_from_user(buf, (const char __user *)arg3, sizeof(buf) - 1)) {
+			pr_err("cmd_add_try_umount: failed to copy user string\n");
+			return 0;
+		}
+		buf[64 - 1] = '\0';
+		
+		new_entry = kmalloc(sizeof(*new_entry), GFP_KERNEL);
+		if (!new_entry)
+			return 0;
+
+		new_entry->string = kstrdup(buf, GFP_KERNEL);		
+		if (!new_entry->string) {
+			kfree(new_entry);
+			return 0;
+		}
+		
+		list_for_each_entry(entry, &string_list, list) {
+			if (!strcmp(entry->string, buf))
+				return 0;
+		}	
+		
+		pr_info("entry: %s added!\n", buf);
+		list_add(&new_entry->list, &string_list);
+		smp_mb();
+		
+		unsigned long result = 0x54321;
+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
+			return 0;
+	}
+	
+	if (arg2 == CUSTOM_CMD2) {
+		struct string_entry *entry, *tmp;
+
+		list_for_each_entry_safe(entry, tmp, &string_list, list) {
+        		pr_info("entry: %s removed!\n", entry->string);
+        		list_del(&entry->list);
+        		kfree(entry->string);
+        		kfree(entry);
+        	}
+        	
+        	smp_mb();
+
+		unsigned long result = 0x54321;
+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
+			return 0;
+	}
+
+	if (arg2 == CUSTOM_CMD3) {
+		
+		unsigned long result;
+		atomic_set(&skip_rwxp, 1);
+		result = 0x1;
+		
+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
+			return 0;
+	}
+
+	if (arg2 == CUSTOM_CMD4) {
+		
+		unsigned long result;
+		atomic_set(&skip_rwxp, 0);
+		result = 0x0;
+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
+			return 0;
+	}
+
 	if (arg2 == CUSTOM_CMD1) {
 		struct string_entry *new_entry, *entry;
 		char buf[64];
