@@ -1,0 +1,77 @@
+menu "KernelSU"
+
+config KSU
+	bool "KernelSU function support"
+	default y
+	help
+	  Enable kernel-level root privileges on Android System.
+
+config KSU_DEBUG
+	bool "KernelSU debug mode"
+	depends on KSU
+	default n
+	help
+	  Enable KernelSU debug mode.
+
+config KSU_THRONE_TRACKER_ALWAYS_THREADED
+	bool "Always run throne_tracker in a kthread"
+	default n
+	help
+	  Runs throne_tracker in a separate kthread, including the first run.
+	  Significantly decreases boot time, but can cause crowning failure
+	  on some FDE or FBEv1 setups.
+	  If unsure, say n.
+
+config KSU_ALLOWLIST_WORKAROUND
+        bool "KernelSU Session Keyring Init workaround"
+        depends on KSU
+        default n
+        help
+          Enable session keyring init workaround for problematic devices.
+          Useful for situations where the SU allowlist is not kept after a reboot.
+
+config KSU_LSM_SECURITY_HOOKS
+	bool "use lsm security hooks"
+        depends on KSU
+        default y
+	help
+	  Disabling this is mostly only useful for kernel 4.1 and older.
+	  Make sure to implement manual hooks on security/security.c.
+
+menu "KernelSU - SUSFS"
+config KSU_SUSFS
+    bool "KernelSU addon - SUSFS"
+    depends on KSU
+    default y
+    help
+      Patch and Enable SUSFS to kernel with KernelSU.
+
+config KSU_SUSFS_SUS_PATH
+    bool "Enable to hide suspicious path (NOT recommended)"
+    depends on KSU_SUSFS
+    default y
+    help
+      - Allow hiding the user-defined path and all its sub-paths from various system calls.
+      - tmpfs filesystem is not allowed to be added. 
+      - Effective only on zygote spawned user app process.
+      - Use with cautious as it may cause performance loss and will be vulnerable to side channel attacks,
+        just disable this feature if it doesn't work for you or you don't need it at all.
+
+config KSU_SUSFS_SPOOF_UNAME
+    bool "Enable to spoof uname"
+    depends on KSU_SUSFS
+    default y
+    help
+      - Allow spoofing the string returned by uname syscall to user-defined string.
+      - Effective on all processes.
+      
+config KSU_SUSFS_ENABLE_LOG
+    bool "Enable logging susfs log to kernel"
+    depends on KSU_SUSFS
+    default y
+    help
+      - Allow logging susfs log to kernel, uncheck it to completely disable all susfs log.
+
+endmenu
+
+endmenu
