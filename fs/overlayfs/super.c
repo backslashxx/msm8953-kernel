@@ -684,17 +684,6 @@ static int ovl_show_options(struct seq_file *m, struct dentry *dentry)
 	struct super_block *sb = dentry->d_sb;
 	struct ovl_fs *ufs = sb->s_fs_info;
 
-	// keep it the same length
-	char *pattern = "/mnt/vendor/mountify";
-	char *replacement = "/vendor/firmware_mnt";
-	
-	// theres a check here to avoid dumbf
-	if (strlen(pattern) == strlen(replacement) && ufs->config.lowerdir) {
-		char *path = strstr(ufs->config.lowerdir, pattern); // grab pointer of first occurence
-		if (path)
-			 memcpy(path, replacement, strlen(pattern)); // we write our new string to it
-	}
-
 	seq_show_option(m, "lowerdir", ufs->config.lowerdir);
 	if (ufs->config.upperdir) {
 		seq_show_option(m, "upperdir", ufs->config.upperdir);
