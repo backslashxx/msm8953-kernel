@@ -1410,6 +1410,7 @@ union security_list_options {
 	int (*sb_clone_mnt_opts)(const struct super_block *oldsb,
 					struct super_block *newsb);
 	int (*sb_parse_opts_str)(char *options, struct security_mnt_opts *opts);
+	int (*move_mount)(const struct path *from_path, const struct path *to_path);
 	int (*dentry_init_security)(struct dentry *dentry, int mode,
 					const struct qstr *name, void **ctx,
 					u32 *ctxlen);
@@ -1727,6 +1728,7 @@ struct security_hook_heads {
 	struct list_head sb_set_mnt_opts;
 	struct list_head sb_clone_mnt_opts;
 	struct list_head sb_parse_opts_str;
+	struct list_head move_mount;
 	struct list_head dentry_init_security;
 	struct list_head dentry_create_files_as;
 #ifdef CONFIG_SECURITY_PATH
