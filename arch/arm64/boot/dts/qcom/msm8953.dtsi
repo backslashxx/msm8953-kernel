@@ -465,7 +465,7 @@
 	qcom_tzlog: tz-log@08600720 {
 		compatible = "qcom,tz-log";
 		reg = <0x08600720 0x2000>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	qcom_rng: qrng@e3000 {
