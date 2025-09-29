@@ -1969,7 +1969,6 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
 			if (is.s.not_found) {
 				EXT4_ERROR_INODE(inode,
 						 "missing inline data xattr");
-				err = -EFSCORRUPTED;
 				goto out_error;
 			}
 
