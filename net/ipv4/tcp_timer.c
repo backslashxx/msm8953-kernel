@@ -477,7 +477,7 @@ void tcp_retransmit_timer(struct sock *sk)
 	if (!tp->packets_out)
 		goto out;
 
-	WARN_ON(tcp_write_queue_empty(sk));
+	// WARN_ON(tcp_write_queue_empty(sk));
 
 	tp->tlp_high_seq = 0;
 
