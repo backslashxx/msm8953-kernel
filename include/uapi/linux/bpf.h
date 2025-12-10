@@ -1755,7 +1755,7 @@ struct __sk_buff {
 	__u32 wire_len;
 	__bpf_md_ptr(struct bpf_sock *, sk);
 
-	struct bpf_flow_keys *flow_keys;
+	__bpf_md_ptr(struct bpf_flow_keys *, flow_keys);
 	__u64 tstamp;
 	__u32 gso_segs;
 	__u32 gso_size;
