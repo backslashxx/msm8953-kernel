@@ -123,5 +123,7 @@ kernel/configs/android-*.cfg
 #Ignoring Android.bp link file
 #
 Android.bp
-out_daikura/
-out_
+
+# ignore temp build folders
+out_*
+out
