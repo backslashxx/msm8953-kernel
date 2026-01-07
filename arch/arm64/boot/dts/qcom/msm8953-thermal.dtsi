@@ -1126,22 +1126,22 @@
 
 		trips {
 			cpus_trip: cpus-trip {
-				temperature = <43000>;
+				temperature = <51000>;
 				hysteresis = <0>;
 				type = "passive";
 			};
 			modem_trip0: modem-trip0 {
-				temperature = <45000>;
+				temperature = <53000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
 			modem_trip1: modem-trip1 {
-				temperature = <48000>;
+				temperature = <56000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			modem_trip2: modem-trip2 {
-				temperature = <54000>;
+				temperature = <62000>;
 				hysteresis = <4000>;
 				type = "passive";
 			};
