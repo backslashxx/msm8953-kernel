@@ -96,38 +96,49 @@ LSM_HANDLER_TYPE ksu_handle_rename(struct dentry *old_dentry, struct dentry *new
 	return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0) || defined(KSU_HAS_PATH_UMOUNT)
-static inline void ksu_umount_mnt(const char *mnt, struct path *path, int flags)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0)
+__weak int path_umount(struct path *path, int flags)
+{
+	char buf[256] = {0};
+	int ret;
+
+	// -1 on the size as implicit null termination
+	// as we zero init the thing
+	char *usermnt = d_path(path, buf, sizeof(buf) - 1);
+	if (!(usermnt && usermnt != buf)) {
+		ret = -ENOENT;
+		goto out;
+	}
+
+	mm_segment_t old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+	ret = ksys_umount((char __user *)usermnt, flags);
+#else
+	ret = (int)sys_umount((char __user *)usermnt, flags);
+#endif
+
+	set_fs(old_fs);
+
+	// release ref here! user_path_at increases it
+	// then only cleans for itself
+out:
+	path_put(path); 
+	return ret;
+}
+#endif
+
+static void ksu_umount_mnt(const char *mnt, struct path *path, int flags)
 {
 	int err = path_umount(path, flags);
 
 	// upstream actually has a UAF here: path->dentry after dput
 	// but its fine as umount always succeeds
 	// that code path is very cold
-
-	pr_info("path_umount: %s code: %d\n", mnt, err);
+	if (err)
+		pr_info("umount %s failed: %d\n", mnt, err);
 }
-#else
-static inline void ksu_umount_mnt(const char *mnt, struct path *path, int flags)
-{
-	mm_segment_t old_fs = get_fs();
-	set_fs(KERNEL_DS); // to allow access to kernel's data segment
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-	int ret = ksys_umount((char __user *)mnt, flags);
-#else
-	long ret = sys_umount((char __user *)mnt, flags); // cuz asmlinkage long sys##name
-#endif
-
-	set_fs(old_fs);
-	
-	pr_info("sys_umount: %s code: %d \n", mnt, ret);
-
-	// release ref here! user_path_at increases it
-	// then only cleans for itself
-	path_put(path);
-}
-#endif // KSU_HAS_PATH_UMOUNT
 
 static void try_umount(const char *mnt, int flags)
 {

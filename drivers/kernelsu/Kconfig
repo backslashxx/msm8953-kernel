@@ -52,12 +52,12 @@ config KSU_DEBUG
 
 config KSU_THRONE_TRACKER_ALWAYS_THREADED
 	bool "Always run throne tracker in a kthread"
-	default y
+	default n
 	help
-	  This option forces throne tracker to run in a kthread even on its first
+	  Enable this option to run throne tracker in a kthread for the first
 	  run, which happens at boot time / decryption stage. This can decrease
 	  boot time, but can cause crowning failure on some FDE/FBEv1 setups.
-	  If you are having issues, say n.
+	  If unsure, say n.
 
 config KSU_LSM_SECURITY_HOOKS
 	bool "Use LSM security hooks"

@@ -432,13 +432,10 @@ static void ksu_handle_initrc(struct file *file)
 // NOTE: https://github.com/tiann/KernelSU/commit/df640917d11dd0eff1b34ea53ec3c0dc49667002
 // - added 260110, seems needed for A17
 
-typedef enum {
-    STAT_NATIVE,	// struct stat
-    STAT_COMPAT,	// struct compat_stat
-    STAT_STAT64		// struct stat64 // 32-bit uses this
-} stat_type_t;
+#define STAT_NATIVE 0
+#define STAT_STAT64 1
 
-static __always_inline void ksu_common_newfstat_ret(unsigned long fd_long, void **statbuf_ptr, const stat_type_t type)
+static __always_inline void ksu_common_newfstat_ret(unsigned long fd_long, void **statbuf_ptr, const int type)
 {
 	
 	if (!ksu_vfs_read_hook) {
@@ -469,25 +466,15 @@ static __always_inline void ksu_common_newfstat_ret(unsigned long fd_long, void 
 	long size, new_size;
 	size_t len;
 
-	switch (type) {
-#ifdef CONFIG_COMPAT
-		case STAT_COMPAT:
-			st_size_ptr = statbuf + offsetof(struct compat_stat, st_size);
-			len = sizeof(compat_off_t);
-			break;
-#endif
+	st_size_ptr = statbuf + offsetof(struct stat, st_size);
+	len = sizeof(long);
+
 #if defined(__ARCH_WANT_STAT64) || defined(__ARCH_WANT_COMPAT_STAT64)
-		case STAT_STAT64:
-			st_size_ptr = statbuf + offsetof(struct stat64, st_size);
-			len = sizeof(long long);
-			break;
-#endif
-		case STAT_NATIVE:
-		default:
-			st_size_ptr = statbuf + offsetof(struct stat, st_size);
-			len = sizeof(long);
-			break;
+	if (type) {
+		st_size_ptr = statbuf + offsetof(struct stat64, st_size);
+		len = sizeof(long long);
 	}
+#endif
 
 	if (copy_from_user(&size, st_size_ptr, len)) {
 		pr_info("%s: read statbuf 0x%lx failed \n", __func__, (unsigned long)st_size_ptr);
@@ -503,7 +490,6 @@ static __always_inline void ksu_common_newfstat_ret(unsigned long fd_long, void 
 		pr_info("%s: add ksu_rc_len failed: statbuf 0x%lx \n", __func__, (unsigned long)st_size_ptr);
 	
 	return;
-
 }
 
 void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr)
@@ -513,7 +499,6 @@ void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr)
 	// native
 	ksu_common_newfstat_ret(fd_long, (void **)statbuf_ptr, STAT_NATIVE);
 }
-
 
 #if defined(__ARCH_WANT_STAT64) || defined(__ARCH_WANT_COMPAT_STAT64)
 void ksu_handle_fstat64_ret(unsigned long *fd, struct stat64 __user **statbuf_ptr)
@@ -528,12 +513,7 @@ void ksu_handle_fstat64_ret(unsigned long *fd, struct stat64 __user **statbuf_pt
 #ifdef CONFIG_COMPAT // this one is wrong, only keeping it for people that picked it up
 void ksu_compat_newfstat_ret(unsigned int *fd, struct compat_stat __user **statbuf_ptr)
 {
-	unsigned long fd_long = (unsigned long)*fd;
-
-	// compat: is this even worth the trouble?
-	// only 32-on-64 can benefit, its questionable that init is on compat on A17
-	// this is so BULLSHIT that I have to do it !!
-	ksu_common_newfstat_ret(fd_long, (void **)statbuf_ptr, STAT_COMPAT);
+	return;
 }
 #endif
 
