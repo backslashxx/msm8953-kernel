@@ -123,3 +123,5 @@ kernel/configs/android-*.cfg
 #Ignoring Android.bp link file
 #
 Android.bp
+out_daikura/
+out_
