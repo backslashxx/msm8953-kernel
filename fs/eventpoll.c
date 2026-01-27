@@ -2125,6 +2125,29 @@ SYSCALL_DEFINE6(epoll_pwait, int, epfd, struct epoll_event __user *, events,
 			      sigmask, sigsetsize);
 }
 
+// https://elixir.bootlin.com/linux/v4.13/source/kernel/time/time.c#L894
+static int get_timespec64(struct timespec64 *ts,
+		   const struct __kernel_timespec __user *uts)
+{
+	struct __kernel_timespec kts;
+	int ret;
+
+	ret = copy_from_user(&kts, uts, sizeof(kts));
+	if (ret)
+		return -EFAULT;
+
+	ts->tv_sec = kts.tv_sec;
+
+	/* Zero out the padding in compat mode */
+	if (in_compat_syscall())
+		kts.tv_nsec &= 0xFFFFFFFFUL;
+
+	/* In 32-bit mode, this drops the padding */
+	ts->tv_nsec = kts.tv_nsec;
+
+	return 0;
+}
+
 SYSCALL_DEFINE6(epoll_pwait2, int, epfd, struct epoll_event __user *, events,
 		int, maxevents, const struct __kernel_timespec __user *, timeout,
 		const sigset_t __user *, sigmask, size_t, sigsetsize)
