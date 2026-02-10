@@ -6986,11 +6986,11 @@ sk_reuseport_is_valid_access(int off, int size,
 				    skb,				\
 				    SKB_FIELD)
 
-#define SK_REUSEPORT_LOAD_SK_FIELD(SK_FIELD)				\
-	SOCK_ADDR_LOAD_NESTED_FIELD(struct sk_reuseport_kern,		\
-				    struct sock,			\
-				    sk,					\
-				    SK_FIELD)
+#define SK_REUSEPORT_LOAD_SK_FIELD_SIZE_OFF(SK_FIELD, BPF_SIZE, EXTRA_OFF) \
+	SOCK_ADDR_LOAD_NESTED_FIELD_SIZE_OFF(struct sk_reuseport_kern,	\
+					     struct sock,		\
+					     sk,			\
+					     SK_FIELD, BPF_SIZE, EXTRA_OFF)
 
 static u32 sk_reuseport_convert_ctx_access(enum bpf_access_type type,
 					   const struct bpf_insn *si,
@@ -7014,7 +7014,16 @@ static u32 sk_reuseport_convert_ctx_access(enum bpf_access_type type,
 		break;
 
 	case offsetof(struct sk_reuseport_md, ip_protocol):
-		SK_REUSEPORT_LOAD_SK_FIELD(sk_protocol);
+		BUILD_BUG_ON(hweight_long(SK_FL_PROTO_MASK) != BITS_PER_BYTE);
+		SK_REUSEPORT_LOAD_SK_FIELD_SIZE_OFF(__sk_flags_offset,
+						    BPF_W, 0);
+		*insn++ = BPF_ALU32_IMM(BPF_AND, si->dst_reg, SK_FL_PROTO_MASK);
+		*insn++ = BPF_ALU32_IMM(BPF_RSH, si->dst_reg,
+					SK_FL_PROTO_SHIFT);
+		/* SK_FL_PROTO_MASK and SK_FL_PROTO_SHIFT are endian
+		 * aware.  No further narrowing or masking is needed.
+		 */
+		*target_size = 1;
 		break;
 
 	case offsetof(struct sk_reuseport_md, data_end):
