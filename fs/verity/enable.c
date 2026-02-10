@@ -9,7 +9,8 @@
 
 #include <crypto/hash.h>
 #include <linux/mount.h>
-#include <linux/sched/signal.h>
+#include <linux/pagemap.h>
+#include <linux/sched.h>
 #include <linux/uaccess.h>
 
 /*
