@@ -172,7 +172,7 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 			new_value, selinux_enforcing,
 			from_kuid(&init_user_ns, audit_get_loginuid(current)),
 			audit_get_sessionid(current));
-		selinux_enforcing = 0;
+		selinux_enforcing = new_value;
 		if (selinux_enforcing)
 			avc_ss_reset(0);
 		selnl_notify_setenforce(selinux_enforcing);
