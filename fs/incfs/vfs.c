@@ -31,6 +31,10 @@
 #define READ_EXEC_FILE_MODE 0555
 #define READ_WRITE_FILE_MODE 0666
 
+#ifndef SB_ACTIVE
+#define SB_ACTIVE	(1<<30)
+#endif
+
 /* Needed for kernel 4.14 - remove for later kernels */
 typedef unsigned int __poll_t;
 
