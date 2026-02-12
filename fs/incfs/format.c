@@ -680,11 +680,40 @@ int incfs_read_next_metadata_record(struct backing_file_context *bfc,
 	return res;
 }
 
+// https://elixir.bootlin.com/linux/v4.14.336/source/fs/read_write.c
+static inline ssize_t new_kernel_read(struct file *file, void *buf, size_t count, loff_t *pos)
+{
+	mm_segment_t old_fs;
+	ssize_t result;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	/* The cast to a user pointer is valid due to the set_fs() */
+	result = vfs_read(file, (void __user *)buf, count, pos);
+	set_fs(old_fs);
+	return result;
+}
+
+static inline ssize_t new_kernel_write(struct file *file, const void *buf, size_t count,
+			    loff_t *pos)
+{
+	mm_segment_t old_fs;
+	ssize_t res;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	/* The cast to a user pointer is valid due to the set_fs() */
+	res = vfs_write(file, (__force const char __user *)buf, count, pos);
+	set_fs(old_fs);
+
+	return res;
+}
+
 ssize_t incfs_kread(struct backing_file_context *bfc, void *buf, size_t size,
 		    loff_t pos)
 {
 	const struct cred *old_cred = override_creds(bfc->bc_cred);
-	int ret = kernel_read(bfc->bc_file, buf, size, &pos);
+	int ret = new_kernel_read(bfc->bc_file, buf, size, &pos);
 
 	revert_creds(old_cred);
 	return ret;
@@ -694,7 +723,7 @@ ssize_t incfs_kwrite(struct backing_file_context *bfc, const void *buf,
 		     size_t size, loff_t pos)
 {
 	const struct cred *old_cred = override_creds(bfc->bc_cred);
-	int ret = kernel_write(bfc->bc_file, buf, size, &pos);
+	int ret = new_kernel_write(bfc->bc_file, buf, size, &pos);
 
 	revert_creds(old_cred);
 	return ret;
