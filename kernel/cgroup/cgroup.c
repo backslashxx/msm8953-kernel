@@ -4559,6 +4559,26 @@ static int cgroup_procs_show(struct seq_file *s, void *v)
 	return 0;
 }
 
+int subsys_cgroup_allow_attach(struct cgroup_taskset *tset)
+{
+	const struct cred *cred = current_cred(), *tcred;
+	struct task_struct *task;
+	struct cgroup_subsys_state *css;
+
+	if (capable(CAP_SYS_NICE))
+		return 0;
+
+	cgroup_taskset_for_each(task, css, tset) {
+		tcred = __task_cred(task);
+
+		if (current != task && !uid_eq(cred->euid, tcred->uid) &&
+		    !uid_eq(cred->euid, tcred->suid))
+			return -EACCES;
+	}
+
+	return 0;
+}
+
 static int cgroup_procs_write_permission(struct cgroup *src_cgrp,
 					 struct cgroup *dst_cgrp,
 					 struct super_block *sb,
@@ -5928,7 +5948,6 @@ void cgroup_exit(struct task_struct *tsk)
 	if (!list_empty(&tsk->cg_list)) {
 		spin_lock_irq(&css_set_lock);
 		css_set_move_task(tsk, cset, NULL, false);
-		spin_unlock_irq(&css_set_lock);
 		list_add_tail(&tsk->cg_list, &cset->dying_tasks);
 		cset->nr_tasks--;
 
@@ -5936,6 +5955,7 @@ void cgroup_exit(struct task_struct *tsk)
 			cgroup_freezer_frozen_exit(tsk);
 		else if (unlikely(cgroup_task_freeze(tsk)))
 			cgroup_update_frozen(task_dfl_cgroup(tsk));
+		spin_unlock_irq(&css_set_lock);
 	} else {
 		get_css_set(cset);
 	}
