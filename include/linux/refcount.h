@@ -93,9 +93,68 @@ static inline void refcount_dec(refcount_t *r)
 # endif /* !CONFIG_ARCH_HAS_REFCOUNT */
 #endif /* CONFIG_REFCOUNT_FULL */
 
-extern __must_check bool refcount_dec_if_one(refcount_t *r);
-extern __must_check bool refcount_dec_not_one(refcount_t *r);
-extern __must_check bool refcount_dec_and_mutex_lock(refcount_t *r, struct mutex *lock);
-extern __must_check bool refcount_dec_and_lock(refcount_t *r, spinlock_t *lock);
+static inline
+bool refcount_dec_if_one(refcount_t *r)
+{
+	return atomic_cmpxchg_release(&r->refs, 1, 0) == 1;
+}
+
+static inline
+bool refcount_dec_not_one(refcount_t *r)
+{
+	unsigned int old, new, val = atomic_read(&r->refs);
+
+	for (;;) {
+		if (unlikely(val == UINT_MAX))
+			return true;
+
+		if (val == 1)
+			return false;
+
+		new = val - 1;
+		if (new > val) {
+			pr_warn("refcount_t: underflow; use-after-free.\n");
+			return true;
+		}
+
+		old = atomic_cmpxchg_release(&r->refs, val, new);
+		if (old == val)
+			break;
+
+		val = old;
+	}
+
+	return true;
+}
+
+static inline
+bool refcount_dec_and_mutex_lock(refcount_t *r, struct mutex *lock)
+{
+	if (refcount_dec_not_one(r))
+		return false;
+
+	mutex_lock(lock);
+	if (!refcount_dec_and_test(r)) {
+		mutex_unlock(lock);
+		return false;
+	}
+
+	return true;
+}
+
+static inline
+bool refcount_dec_and_lock(refcount_t *r, spinlock_t *lock)
+{
+	if (refcount_dec_not_one(r))
+		return false;
+
+	spin_lock(lock);
+	if (!refcount_dec_and_test(r)) {
+		spin_unlock(lock);
+		return false;
+	}
+
+	return true;
+}
 
 #endif /* _LINUX_REFCOUNT_H */
