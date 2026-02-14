@@ -17,6 +17,8 @@
 
 struct perf_event;
 struct bpf_map;
+struct seq_file;
+struct btf;
 
 /* map is generic key/value storage optionally accesible by eBPF programs */
 struct bpf_map_ops {
@@ -36,6 +38,10 @@ struct bpf_map_ops {
 	void *(*map_fd_get_ptr)(struct bpf_map *map, struct file *map_file,
 				int fd);
 	void (*map_fd_put_ptr)(void *ptr);
+	void (*map_seq_show_elem)(struct bpf_map *map, void *key,
+				  struct seq_file *m);
+	int (*map_check_btf)(const struct bpf_map *map, const struct btf *btf,
+			     u32 key_type_id, u32 value_type_id);
 };
 
 struct bpf_map {
@@ -50,6 +56,9 @@ struct bpf_map {
 	u32 map_flags;
 	u32 pages;
 	u32 id;
+	u32 btf_key_id;
+	u32 btf_value_id;
+	struct btf *btf;
 	bool unpriv_array;
 	/* 7 bytes hole */
 
@@ -72,6 +81,11 @@ struct bpf_map_type_list {
 	const struct bpf_map_ops *ops;
 	enum bpf_map_type type;
 };
+
+static inline bool bpf_map_support_seq_show(const struct bpf_map *map)
+{
+	return map->ops->map_seq_show_elem && map->ops->map_check_btf;
+}
 
 /* function argument constraints */
 enum bpf_arg_type {
