@@ -14,6 +14,8 @@
 #include <linux/percpu.h>
 #include <linux/err.h>
 #include <linux/rbtree_latch.h>
+#include <linux/mm_types.h>
+#include <linux/mutex.h>
 
 struct perf_event;
 struct bpf_map;
@@ -44,6 +46,7 @@ struct bpf_map_ops {
 				  struct seq_file *m);
 	int (*map_check_btf)(const struct bpf_map *map, const struct btf *btf,
 			     u32 key_type_id, u32 value_type_id);
+	int (*map_mmap)(struct bpf_map *map, struct vm_area_struct *vma);
 	unsigned int (*map_poll)(struct bpf_map *map, struct file *filp,
 				 struct poll_table_struct *pts);
 };
@@ -63,6 +66,7 @@ struct bpf_map {
 	u32 btf_key_type_id;
 	u32 btf_value_type_id;
 	struct btf *btf;
+	char name[BPF_OBJ_NAME_LEN];
 	bool unpriv_array;
 	/* 7 bytes hole */
 
@@ -72,8 +76,9 @@ struct bpf_map {
 	struct user_struct *user ____cacheline_aligned;
 	atomic_t refcnt;
 	atomic_t usercnt;
+	struct mutex freeze_mutex;
+	u64 writecnt; /* writable mmap cnt; protected by freeze_mutex */
 	struct bpf_map *inner_map_meta;
-	char name[BPF_OBJ_NAME_LEN];
 	struct work_struct work;
 #ifdef CONFIG_SECURITY
 	void *security;
@@ -370,6 +375,7 @@ int bpf_map_precharge_memlock(u32 pages);
 int bpf_map_charge_memlock(struct bpf_map *map, u32 pages);
 void bpf_map_uncharge_memlock(struct bpf_map *map, u32 pages);
 void *bpf_map_area_alloc(size_t size);
+void *bpf_map_area_mmapable_alloc(size_t size, int numa_node);
 void bpf_map_area_free(void *base);
 
 extern int sysctl_unprivileged_bpf_disabled;
