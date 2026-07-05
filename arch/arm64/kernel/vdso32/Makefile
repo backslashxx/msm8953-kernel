@@ -97,8 +97,11 @@ VDSO_LDFLAGS += -Wl,-z,max-page-size=4096 -Wl,-z,common-page-size=4096
 VDSO_LDFLAGS += -nostdlib -shared -mfloat-abi=soft
 VDSO_LDFLAGS += $(call cc32-ldoption,-Wl$(comma)--hash-style=sysv)
 VDSO_LDFLAGS += $(call cc32-ldoption,-Wl$(comma)--build-id)
+ifeq ($(cc-name),clang)
+VDSO_LDFLAGS += $(call cc32-ldoption,-fuse-ld=lld)
+else
 VDSO_LDFLAGS += $(call cc32-ldoption,-fuse-ld=bfd)
-
+endif
 
 # Borrow vdsomunge.c from the arm vDSO
 # We have to use a relative path because scripts/Makefile.host prefixes

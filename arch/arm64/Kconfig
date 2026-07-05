@@ -1344,13 +1344,16 @@ config COMPAT_VDSO
 	select ARM_ARCH_TIMER_VCT_ACCESS
 	default n
 	help
-	  Warning: a 32-bit toolchain is necessary to build the vDSO. You
+	  Warning: GCC builds need a 32-bit toolchain to build the vDSO. You
 	  must explicitly define which toolchain should be used by setting
-	  CROSS_COMPILE_ARM32 to the prefix of the 32-bit toolchain (same format
-	  as CROSS_COMPILE). If CROSS_COMPILE_ARM32 is empty, a warning will be
-	  printed and the kernel will be built as if COMPAT_VDSO had not been
-	  set. If CROSS_COMPILE_ARM32 is set to an invalid prefix, compilation
-	  will be aborted.
+	  CROSS_COMPILE_ARM32 to the prefix of the 32-bit toolchain (same
+	  format as CROSS_COMPILE). If CROSS_COMPILE_ARM32 is empty, a warning
+	  will be printed and the kernel will be built as if COMPAT_VDSO had
+	  not been set. If CROSS_COMPILE_ARM32 is set to an invalid prefix,
+	  compilation will be aborted.
+
+	  Clang builds use clang --target=arm-linux-gnueabi by default, so a
+	  separate 32-bit GCC toolchain is not required.
 
 	  Provide a vDSO to 32-bit processes. It includes the symbols provided
 	  by the vDSO from the 32-bit kernel, so that a 32-bit libc can use
