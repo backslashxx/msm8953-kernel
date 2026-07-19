@@ -22,8 +22,7 @@ config KSU_KPROBES_KSUD
 config KSU_HACK_ARM64_BRANCH_LINK
 	bool "EXPERIMENTAL: inline call-site hijacking (ARM64 bl insn)"
 	depends on KSU
-	depends on ARM64 && KALLSYMS && KSU_KPROBES_KSUD
-	depends on !KSU_TAMPER_SYSCALL_TABLE
+	depends on ARM64 && KALLSYMS
 	default n
 	help
 	  EXPERIMENTAL: provides sucompat by patching callsites, scanning kernel text and 
