@@ -7,6 +7,11 @@
 #include <asm/asm-offsets.h>
 #include <asm/assembler.h>
 
+// arch/arm64/kernel/asm-offsets.c
+#define PT_REGS_SIZE   S_FRAME_SIZE
+#define SYM_CODE_START	ENTRY
+#define SYM_CODE_END	ENDPROC
+
 #define        OPT_SLOT_SIZE   65536
 
 	.global optinsn_slot
