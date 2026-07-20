@@ -458,7 +458,7 @@ out:
 static int fscrypt_data_encryption_mode(struct inode *inode)
 {
 	return fscrypt_is_ice_capable(inode->i_sb) ?
-	FSCRYPT_MODE_PRIVATE : FS_ENCRYPTION_MODE_AES_256_XTS;
+	FSCRYPT_MODE_PRIVATE : FSCRYPT_MODE_AES_256_XTS;
 }
 
 int fscrypt_get_mode_key_size(int mode)
