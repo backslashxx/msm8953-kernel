@@ -27,7 +27,7 @@
 #define FSCRYPT_MODE_AES_128_CBC		5
 #define FSCRYPT_MODE_AES_128_CTS		6
 #define FSCRYPT_MODE_ADIANTUM			9
-#define FS_ENCRYPTION_MODE_PRIVATE		127
+#define FSCRYPT_MODE_PRIVATE		127
 
 struct fscrypt_policy {
 	__u8 version;

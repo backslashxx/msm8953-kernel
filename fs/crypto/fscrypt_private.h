@@ -116,7 +116,7 @@ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
 	    filenames_mode == FSCRYPT_MODE_AES_256_CTS)
 		return true;
 
-	if (contents_mode == FS_ENCRYPTION_MODE_PRIVATE &&
+	if (contents_mode == FSCRYPT_MODE_PRIVATE &&
 	    filenames_mode == FSCRYPT_MODE_AES_256_CTS)
 		return true;
 
@@ -130,7 +130,7 @@ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
 static inline bool is_private_data_mode(struct fscrypt_info *ci)
 {
 	return ci->ci_type == CI_DATA_TYPE &&
-		ci->ci_data_mode == FS_ENCRYPTION_MODE_PRIVATE;
+		ci->ci_data_mode == FSCRYPT_MODE_PRIVATE;
 }
 
 /* crypto.c */
