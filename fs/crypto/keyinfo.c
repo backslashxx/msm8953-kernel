@@ -9,6 +9,7 @@
  */
 
 #include <keys/user-type.h>
+#include <linux/refcount.h>
 #include <linux/hashtable.h>
 #include <linux/scatterlist.h>
 #include <crypto/aes.h>
