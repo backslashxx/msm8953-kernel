@@ -48,6 +48,7 @@
 #include <linux/ftrace.h>
 #include <linux/cpu.h>
 #include <linux/jump_label.h>
+#include <linux/vmalloc.h>
 
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
@@ -122,12 +123,12 @@ enum kprobe_slot_state {
 
 static void *alloc_insn_page(void)
 {
-	return module_alloc(PAGE_SIZE);
+	return vmalloc_exec(PAGE_SIZE);
 }
 
 void __weak free_insn_page(void *page)
 {
-	module_memfree(page);
+	vfree(page);
 }
 
 struct kprobe_insn_cache kprobe_insn_slots = {
@@ -362,6 +363,27 @@ void opt_pre_handler(struct kprobe *p, struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(opt_pre_handler);
 
+void optprobe_optimized_callback(struct optimized_kprobe *op, struct pt_regs *regs)
+{
+	if (kprobe_disabled(&op->kp))
+		return;
+
+	preempt_disable();
+
+	if (kprobe_running()) {
+		kprobes_inc_nmissed_count(&op->kp);
+	} else {
+		op->set_pc(op, regs);
+		__this_cpu_write(current_kprobe, &op->kp);
+		get_kprobe_ctlblk()->kprobe_status = KPROBE_HIT_ACTIVE;
+		opt_pre_handler(&op->kp, regs);
+		__this_cpu_write(current_kprobe, NULL);
+	}
+
+	preempt_enable();
+}
+NOKPROBE_SYMBOL(optprobe_optimized_callback)
+
 /* Free optimized instructions and optimized_kprobe */
 static void free_aggr_kprobe(struct kprobe *p)
 {
@@ -536,8 +558,10 @@ static void kick_kprobe_optimizer(void)
 static void kprobe_optimizer(struct work_struct *work)
 {
 	mutex_lock(&kprobe_mutex);
+#ifdef CONFIG_MODULES
 	/* Lock modules while optimizing kprobes */
 	mutex_lock(&module_mutex);
+#endif
 
 	/*
 	 * Step 1: Unoptimize kprobes and collect cleaned (unused and disarmed)
@@ -560,8 +584,9 @@ static void kprobe_optimizer(struct work_struct *work)
 	/* Step 4: Free cleaned kprobes after quiesence period */
 	do_free_cleaned_kprobes();
 
+#ifdef CONFIG_MODULES
 	mutex_unlock(&module_mutex);
-
+#endif
 	/* Step 5: Kick optimizer again if needed */
 	if (!list_empty(&optimizing_list) || !list_empty(&unoptimizing_list))
 		kick_kprobe_optimizer();
@@ -1491,6 +1516,7 @@ static int check_kprobe_address_safe(struct kprobe *p,
 		goto out;
 	}
 
+#ifdef CONFIG_MODULES
 	/* Check if are we probing a module */
 	*probed_mod = __module_text_address((unsigned long) p->addr);
 	if (*probed_mod) {
@@ -1514,6 +1540,9 @@ static int check_kprobe_address_safe(struct kprobe *p,
 			ret = -ENOENT;
 		}
 	}
+#else
+	*probed_mod = NULL;
+#endif
 out:
 	preempt_enable();
 	jump_label_unlock();
@@ -2145,6 +2174,7 @@ static int __init populate_kprobe_blacklist(unsigned long *start,
 	return 0;
 }
 
+#ifdef CONFIG_MODULES
 /* Module notifier call back, checking kprobes on the module */
 static int kprobes_module_callback(struct notifier_block *nb,
 				   unsigned long val, void *data)
@@ -2191,6 +2221,7 @@ static struct notifier_block kprobe_module_nb = {
 	.notifier_call = kprobes_module_callback,
 	.priority = 0
 };
+#endif
 
 /* Markers of _kprobe_blacklist section */
 extern unsigned long __start_kprobe_blacklist[];
@@ -2241,8 +2272,10 @@ static int __init init_kprobes(void)
 	err = arch_init_kprobes();
 	if (!err)
 		err = register_die_notifier(&kprobe_exceptions_nb);
+#ifdef CONFIG_MODULES
 	if (!err)
 		err = register_module_notifier(&kprobe_module_nb);
+#endif
 
 	kprobes_initialized = (err == 0);
 
